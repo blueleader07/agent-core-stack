@@ -159,7 +159,7 @@ Be conversational, insightful, and helpful.`,
     const authorizerFunction = new lambda.Function(this, 'FirebaseAuthorizer', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../shared/auth/firebase-authorizer')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../shared/auth/firebase-authorizer')),
       timeout: cdk.Duration.seconds(10),
       environment: {
         FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',

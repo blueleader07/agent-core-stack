@@ -2,6 +2,7 @@ import {
   BedrockRuntimeClient,
   ConverseCommand,
   ConverseStreamCommand,
+  Tool,
 } from '@aws-sdk/client-bedrock-runtime';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
 import axios from 'axios';
@@ -115,7 +116,7 @@ async function processWithInlineAgent(
   ];
 
   // Define available tools
-  const tools = [
+  const tools: Tool[] = [
     {
       toolSpec: {
         name: 'fetch_url',

@@ -116,7 +116,7 @@ async function callConverseAPI(
   // Simple message array (in production, maintain conversation history)
   const messages = [
     {
-      role: 'user',
+      role: 'user' as const,
       content: [{ text: userMessage }],
     },
   ];
@@ -164,7 +164,7 @@ async function callConverseAPI(
 
       // Handle metadata
       if (event.metadata?.usage) {
-        tokenCount = event.metadata.usage.inputTokens + event.metadata.usage.outputTokens;
+        tokenCount = (event.metadata.usage.inputTokens ?? 0) + (event.metadata.usage.outputTokens ?? 0);
       }
 
       // Handle completion
