@@ -1,0 +1,9 @@
+*.js
+*.d.ts
+node_modules
+cdk.out
+.env
+
+# Firebase service account credentials (NEVER COMMIT!)
+*firebase-adminsdk*.json
+automation-station-*.json
