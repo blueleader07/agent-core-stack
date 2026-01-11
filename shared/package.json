@@ -1,0 +1,16 @@
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and types for Bedrock examples",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.709.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "typescript": "~5.2.2"
+  }
+}
