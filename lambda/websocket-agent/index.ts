@@ -3,11 +3,27 @@ import {
   InvokeAgentCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
+import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 
 const bedrockClient = new BedrockAgentRuntimeClient({ region: 'us-east-1' });
+const stsClient = new STSClient({ region: 'us-east-1' });
 
 const BEDROCK_AGENT_ID = process.env.BEDROCK_AGENT_ID!;
 const BEDROCK_AGENT_ALIAS_ID = process.env.BEDROCK_AGENT_ALIAS_ID!;
+
+// Log caller identity on cold start
+(async () => {
+  try {
+    const identity = await stsClient.send(new GetCallerIdentityCommand({}));
+    console.log('Lambda Caller Identity:', {
+      Account: identity.Account,
+      Arn: identity.Arn,
+      UserId: identity.UserId,
+    });
+  } catch (error) {
+    console.error('Failed to get caller identity:', error);
+  }
+})();
 
 interface WebSocketEvent {
   requestContext: {
