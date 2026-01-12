@@ -46,6 +46,8 @@ interface WebSocketEvent {
  * Supports: $connect, $disconnect, and message routes
  */
 export const handler = async (event: WebSocketEvent) => {
+  console.log('HANDLER ENTRY - Full event:', JSON.stringify(event, null, 2));
+  
   const { connectionId, routeKey, domainName, stage } = event.requestContext;
   
   console.log('WebSocket event:', { connectionId, routeKey });
@@ -53,12 +55,15 @@ export const handler = async (event: WebSocketEvent) => {
   // Handle different WebSocket routes
   switch (routeKey) {
     case '$connect':
+      console.log('Routing to handleConnect');
       return handleConnect(connectionId, event.requestContext.authorizer);
     
     case '$disconnect':
+      console.log('Routing to handleDisconnect');
       return handleDisconnect(connectionId);
     
     case '$default':
+      console.log('Routing to handleMessage');
       return handleMessage(event, domainName, stage);
     
     default:
@@ -95,7 +100,12 @@ async function handleDisconnect(connectionId: string) {
  */
 async function handleMessage(event: WebSocketEvent, domainName: string, stage: string) {
   const { connectionId } = event.requestContext;
+  
+  console.log('handleMessage called - raw event.body:', event.body);
+  
   const body = event.body ? JSON.parse(event.body) : {};
+  
+  console.log('Received message body:', JSON.stringify(body));
   
   // Create API Gateway Management API client for sending messages
   const callbackUrl = `https://${domainName}/${stage}`;
@@ -105,6 +115,8 @@ async function handleMessage(event: WebSocketEvent, domainName: string, stage: s
 
   try {
     const { action, message } = body;
+    
+    console.log('Message action:', action, 'message:', message);
 
     if (action === 'ping') {
       // Simple ping/pong for connection testing
@@ -115,13 +127,15 @@ async function handleMessage(event: WebSocketEvent, domainName: string, stage: s
       return { statusCode: 200, body: 'Pong sent' };
     }
 
-    if (action === 'invoke-agent') {
+    if (action === 'invoke-agent' || action === 'chat') {
       // Stream agent response back to client
+      console.log('Invoking agent with message:', message);
       await streamAgentResponse(apiGatewayClient, connectionId, message);
       return { statusCode: 200, body: 'Agent invoked' };
     }
 
     // Default: echo the message
+    console.log('Echoing message back to client');
     await sendToConnection(apiGatewayClient, connectionId, {
       type: 'echo',
       message: message || 'Hello from WebSocket Agent!',

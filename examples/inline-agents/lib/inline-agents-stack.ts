@@ -12,18 +12,13 @@ export class InlineAgentsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Firebase Auth Lambda Authorizer (from shared)
-    const authorizerFunction = new lambda.Function(this, 'FirebaseAuthorizer', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../shared/auth/firebase-authorizer')),
-      timeout: cdk.Duration.seconds(10),
-      environment: {
-        FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
-        FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || '',
-        FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
-      },
-    });
+    // Import shared Cognito authorizer function from CloudFormation exports
+    const authorizerFunctionArn = cdk.Fn.importValue('SharedAuthorizerFunctionArn');
+    const authorizerFunction = lambda.Function.fromFunctionArn(
+      this,
+      'SharedAuthorizerFunction',
+      authorizerFunctionArn
+    );
 
     // Inline Agent Lambda with Bedrock Converse API
     const inlineAgentFunction = new NodejsFunction(this, 'InlineAgentFunction', {

@@ -132,7 +132,8 @@ async function callConverseAPI(
   const inferenceConfig = {
     temperature: temperature ?? 0.7,
     maxTokens: maxTokens ?? 2048,
-    topP: 0.9,
+    // Note: Claude Sonnet 4.5 doesn't support both temperature and topP together
+    // Using temperature only
   };
 
   const command = new ConverseStreamCommand({

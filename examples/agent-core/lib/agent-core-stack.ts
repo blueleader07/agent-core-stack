@@ -155,20 +155,15 @@ Be conversational, insightful, and helpful.`,
       description: 'Production alias for Article Agent with Claude 4.5 Sonnet',
     });
 
-    // Firebase Auth Lambda Authorizer (from shared)
-    const authorizerFunction = new lambda.Function(this, 'FirebaseAuthorizer', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../shared/auth/firebase-authorizer')),
-      timeout: cdk.Duration.seconds(10),
-      environment: {
-        FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',
-        FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL || '',
-        FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
-      },
-    });
+    // Import shared Cognito authorizer function from CloudFormation exports
+    const authorizerFunctionArn = cdk.Fn.importValue('SharedAuthorizerFunctionArn');
+    const authorizerFunction = lambda.Function.fromFunctionArn(
+      this,
+      'SharedAuthorizerFunction',
+      authorizerFunctionArn
+    );
 
-    // WebSocket Lambda for streaming agent responses
+    // Agent Lambda
     const wsAgentFunction = new lambda.Function(this, 'WebSocketAgentFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
@@ -192,8 +187,8 @@ Be conversational, insightful, and helpful.`,
 
     // WebSocket API for streaming
     const webSocketApi = new apigatewayv2.WebSocketApi(this, 'AgentWebSocketApi', {
-      apiName: 'Agent WebSocket API',
-      description: 'WebSocket API for streaming agent responses with Firebase auth',
+      apiName: 'Agent Core WebSocket',
+      description: 'WebSocket API for streaming agent responses with Cognito auth',
       connectRouteOptions: {
         authorizer: new WebSocketLambdaAuthorizer('WebSocketAuthorizer', authorizerFunction, {
           identitySource: ['route.request.querystring.token'],
