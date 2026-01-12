@@ -98,15 +98,17 @@ const agent = new bedrock.CfnAgent({
 |---------|--------------|---------------|------------|
 | **Complexity** | Low | Medium | High |
 | **First Token Latency** | 1-2s | 2-3s | 3-5s |
-| **Monthly Cost (1K convos)** | $6-8 | $7-9 | $9-11 |
+| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $9-11 |
 | **Setup Time** | 5 min | 10 min | 15 min |
-| **Code Lines** | ~150 | ~400 | ~600 |
-| **Tool Calling** | ❌ | ✅ | ✅ |
-| **Multi-Agent** | ❌ | ✅ | ✅ |
+| **Code to Write** | High | Medium | Low |
+| **Tool Calling** | ✅ | ✅ | ✅ |
+| **Multi-Agent** | Manual | Manual | Built-in |
 | **Session Management** | Manual | Manual | Built-in |
 | **Iteration Speed** | Fastest | Fast | Slow |
 | **Control Level** | Highest | High | Medium |
 | **AWS Management** | None | Minimal | Full |
+
+**\* Cost estimates:** Actual costs depend heavily on conversation length, tool usage, and session frequency. The difference between Converse API and Inline Agents is negligible (both use Lambda + Bedrock API calls). Agent Core includes additional costs from the Bedrock Agents service, which varies based on usage.
 
 ## 🏗️ Architecture Overview
 
