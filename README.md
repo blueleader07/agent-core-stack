@@ -2,6 +2,9 @@
 
 Three patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
 
+> **⚠️ DEMO PROJECT NOTICE**  
+> This is a demonstration/educational project showcasing different AWS Bedrock integration patterns. Before deploying to production, please review the [SECURITY.md](./SECURITY.md) documentation and conduct a thorough security audit of authentication, authorization, and API security configurations.
+
 ## 🎯 Quick Start
 
 Choose your pattern based on your needs:
