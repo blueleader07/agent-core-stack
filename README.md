@@ -101,7 +101,7 @@ const agent = new bedrock.CfnAgent({
 | **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $9-11 |
 | **Setup Time** | 5 min | 10 min | 15 min |
 | **Code to Write** | High | Medium | Low |
-| **Tool Calling** | ✅ | ✅ | ✅ |
+| **Tool Calling** | Manual | Manual | Built-in |
 | **Multi-Agent** | Manual | Manual | Built-in |
 | **Session Management** | Manual | Manual | Built-in |
 | **Iteration Speed** | Fastest | Fast | Slow |
