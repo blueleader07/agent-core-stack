@@ -1,0 +1,16 @@
+{
+  "name": "inline-agent-lambda",
+  "version": "1.0.0",
+  "description": "Inline agent with tool calling using Bedrock Converse API",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.709.0",
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.709.0",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "typescript": "~5.2.2"
+  }
+}

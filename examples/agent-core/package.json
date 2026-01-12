@@ -1,0 +1,31 @@
+{
+  "name": "bedrock-agent-core-example",
+  "version": "1.0.0",
+  "description": "Full Bedrock Agent with action groups - WebSocket streaming example",
+  "bin": {
+    "agent-core": "bin/agent-core.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff",
+    "synth": "cdk synth"
+  },
+  "devDependencies": {
+    "@types/node": "20.8.9",
+    "aws-cdk": "2.149.0",
+    "ts-node": "^10.9.1",
+    "typescript": "~5.2.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.709.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.709.0",
+    "@aws-sdk/client-sts": "^3.966.0",
+    "aws-cdk-lib": "2.149.0",
+    "constructs": "^10.0.0",
+    "dotenv": "^17.2.3",
+    "source-map-support": "^0.5.21"
+  }
+}

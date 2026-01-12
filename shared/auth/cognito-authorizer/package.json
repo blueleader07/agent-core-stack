@@ -1,0 +1,14 @@
+{
+  "name": "cognito-authorizer",
+  "version": "1.0.0",
+  "description": "Cognito JWT token authorizer for WebSocket API Gateway",
+  "main": "index.js",
+  "dependencies": {
+    "aws-jwt-verify": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.110",
+    "@types/node": "^20.8.9",
+    "typescript": "~5.2.2"
+  }
+}

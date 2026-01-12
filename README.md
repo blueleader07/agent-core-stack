@@ -1,262 +1,387 @@
-# Agent Core Stack
+# AWS Bedrock Integration Examples
 
-AWS CDK infrastructure for Bedrock Agent with Firebase authentication and WebSocket streaming.
+Three patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
 
-## Overview
+## 🎯 Quick Start
 
-This project implements a **hybrid Firebase + AWS architecture** that combines:
-- **AWS Bedrock Agent** with Claude Sonnet 4.5 for AI-powered conversations
-- **Firebase JWT authentication** via Lambda authorizer
-- **WebSocket API** for real-time streaming responses
-- **React frontend integration** (deployed to Firebase Hosting)
+Choose your pattern based on your needs:
 
-## Architecture
+| Pattern | Best For | Complexity | Setup Time |
+|---------|----------|------------|------------|
+| [**Converse API**](./examples/converse-api/) | Simple chat, Q&A, prototyping | ⭐ Low | 5 min |
+| [**Inline Agents**](./examples/inline-agents/) | Tool calling, custom logic | ⭐⭐ Medium | 10 min |
+| [**Agent Core**](./examples/agent-core/) | Production workflows, multiple tools | ⭐⭐⭐ High | 15 min |
+
+## 📚 What's Inside
+
+This repository demonstrates **three different approaches** to building AI applications with AWS Bedrock:
+
+### 1. [Converse API](./examples/converse-api/) - **Simplest Pattern**
+
+Direct Bedrock Converse API calls with streaming responses.
+
+```typescript
+// One API call, direct streaming
+const response = await bedrock.converse({
+  modelId: 'claude-sonnet-4-5',
+  messages: [{ role: 'user', content: [{ text: 'Hello!' }] }]
+});
+```
+
+**When to use:**
+- ✅ Simple chat interfaces
+- ✅ Q&A systems
+- ✅ Content generation
+- ✅ Learning Bedrock
+- ✅ Rapid prototyping
+
+**[View Converse API Example →](./examples/converse-api/)**
+
+---
+
+### 2. [Inline Agents](./examples/inline-agents/) - **Custom Logic Pattern**
+
+Agent logic in Lambda code using Converse API with tool calling.
+
+```typescript
+// Your code controls the agent loop
+while (needsMoreTools) {
+  const response = await bedrock.converse({ tools, messages });
+  if (response.stopReason === 'tool_use') {
+    const result = await executeTool(response.toolUse);
+    messages.push({ toolResult: result });
+  }
+}
+```
+
+**When to use:**
+- ✅ Custom tool integrations
+- ✅ Fast iteration on agent logic
+- ✅ Fine-grained control
+- ✅ Cost optimization
+- ✅ Multiple mini-agents
+
+**[View Inline Agents Example →](./examples/inline-agents/)**
+
+---
+
+### 3. [Agent Core](./examples/agent-core/) - **Production Pattern**
+
+Full AWS Bedrock Agent service with action groups.
+
+```typescript
+// AWS manages the agent lifecycle
+const agent = new bedrock.CfnAgent({
+  foundationModel: 'claude-sonnet-4-5',
+  actionGroups: [urlFetcher, calculator, database],
+  // AWS handles orchestration, memory, sessions
+});
+```
+
+**When to use:**
+- ✅ Production multi-tool workflows
+- ✅ Complex orchestration
+- ✅ Built-in memory/sessions
+- ✅ AWS-managed infrastructure
+- ✅ Multiple action groups
+
+**[View Agent Core Example →](./examples/agent-core/)**
+
+---
+
+## 📊 Pattern Comparison
+
+| Feature | Converse API | Inline Agents | Agent Core |
+|---------|--------------|---------------|------------|
+| **Complexity** | Low | Medium | High |
+| **First Token Latency** | 1-2s | 2-3s | 3-5s |
+| **Monthly Cost (1K convos)** | $6-8 | $7-9 | $9-11 |
+| **Setup Time** | 5 min | 10 min | 15 min |
+| **Code Lines** | ~150 | ~400 | ~600 |
+| **Tool Calling** | ❌ | ✅ | ✅ |
+| **Multi-Agent** | ❌ | ✅ | ✅ |
+| **Session Management** | Manual | Manual | Built-in |
+| **Iteration Speed** | Fastest | Fast | Slow |
+| **Control Level** | Highest | High | Medium |
+| **AWS Management** | None | Minimal | Full |
+
+## 🏗️ Architecture Overview
+
+All three examples share:
+- 🤖 **Claude Sonnet 4.5** via Bedrock
+- 🔐 **Firebase Authentication** (JWT tokens)
+- ⚡ **WebSocket API** for streaming
+- 📡 **Real-time responses** to React frontend
+
+### Shared Components
 
 ```
-Firebase React App (https://automation-station-e3361.web.app)
-                    ↓ (Firebase ID Token)
-            WebSocket API Gateway
-                    ↓ (Authorizer validates JWT)
-              Lambda Authorizer
-                    ↓ (verified user context)
-            WebSocket Lambda Handler
-                    ↓ (invoke agent)
-              Bedrock Agent (Claude Sonnet 4.5)
-                    ↓ (streaming response)
-            Back to React App (real-time updates)
+shared/
+├── auth/firebase-authorizer/    # Firebase JWT validation
+├── websocket/                   # WebSocket utilities
+├── types/                       # TypeScript definitions
+└── constructs/                  # CDK constructs (future)
 ```
 
-## Features
+## 🚀 Getting Started
 
-- ✅ **Claude Sonnet 4.5** - Latest Anthropic model via Bedrock Agents
-- ✅ **Firebase Authentication** - Secure JWT validation in AWS Lambda
-- ✅ **Streaming Responses** - Real-time WebSocket communication (up to 15 min)
-- ✅ **Hybrid Architecture** - Best of Firebase (auth, hosting) + AWS (AI, infrastructure)
-- ✅ **Infrastructure as Code** - Full CDK deployment
-
-## Prerequisites
+### Prerequisites
 
 1. **AWS Account** with Bedrock access
-2. **Firebase Project** (for authentication)
-3. **Docker** (for Lambda bundling)
-4. **Node.js 18+**
+2. **Bedrock Model Access** - Request Claude Sonnet 4.5 in AWS Console
+3. **Firebase Project** - Create at [console.firebase.google.com](https://console.firebase.google.com)
+4. **Node.js 20+** - [Download](https://nodejs.org/)
+5. **AWS CDK** - `npm install -g aws-cdk`
 
-## Setup
+### Quick Setup (Any Example)
 
-### 1. Install Dependencies
+1. **Clone repository**
+   ```bash
+   git clone https://github.com/blueleader07/agent-core-stack.git
+   cd agent-core-stack
+   ```
 
-```bash
-npm install --no-optional --ignore-scripts
-```
+2. **Configure Firebase**
+   
+   Create `.env` in repository root:
+   ```bash
+   FIREBASE_PROJECT_ID=your-project-id
+   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYourKey\n-----END PRIVATE KEY-----"
+   ```
 
-### 2. Configure Firebase Credentials
+3. **Choose your example**
+   ```bash
+   cd examples/converse-api/     # Simplest
+   # OR
+   cd examples/inline-agents/    # Medium complexity
+   # OR
+   cd examples/agent-core/       # Full featured
+   ```
 
-Create `.env` file in the project root:
+4. **Deploy**
+   ```bash
+   npm install
+   npm run build
+   npm run deploy
+   ```
 
-```bash
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYourKeyHere\n-----END PRIVATE KEY-----"
-```
+5. **Get WebSocket URL** from CDK output
+   ```
+   ✅ BedrockConverseApiStack (deployed)
+   
+   Outputs:
+   WebSocketUrl = wss://abc123.execute-api.us-east-1.amazonaws.com/prod
+   ```
 
-Get these from: Firebase Console > Project Settings > Service Accounts > Generate New Private Key
+## 🧪 Testing
 
-### 3. Configure AWS
-
-```bash
-aws configure
-```
-
-Bootstrap CDK (first time only):
-
-```bash
-npx cdk bootstrap
-```
-
-### 4. Deploy
-
-```bash
-npm run build
-npm run cdk deploy
-```
-
-**Outputs:**
-- `WebSocketUrl` - wss://xxx.execute-api.us-east-1.amazonaws.com/prod
-- `BedrockAgentId` - Agent ID for direct invocation
-- `BedrockAgentAliasId` - Agent alias ID
-
-## Usage
-
-### Frontend Integration (React)
-
-```tsx
-import { auth } from './firebase';
-
-const ws = new WebSocket(`${WS_URL}?token=${await user.getIdToken()}`);
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === 'stream') {
-    console.log('Agent:', data.chunk);
-  }
-};
-
-ws.send(JSON.stringify({ 
-  action: 'invoke-agent', 
-  message: 'Hello!' 
-}));
-```
-
-### CLI Testing
+### With wscat (CLI)
 
 ```bash
 # Install wscat
 npm install -g wscat
 
-# Get Firebase token (from browser console after login)
-TOKEN=$(firebase auth:export)
+# Get Firebase token (from browser console after Firebase login)
+# In browser: await firebase.auth().currentUser.getIdToken()
 
-# Connect and chat
-wscat -c "wss://xxx.execute-api.us-east-1.amazonaws.com/prod?token=$TOKEN"
+# Connect to any example
+wscat -c "wss://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod?token=YOUR_TOKEN"
 
-# Send message
-> {"action": "invoke-agent", "message": "Explain quantum computing"}
+# Send message (Converse API)
+> {"action": "chat", "message": "Hello!"}
+
+# Send message (Inline Agents)
+> {"action": "chat", "message": "Calculate 25 * 4"}
+
+# Send message (Agent Core)
+> {"action": "invoke-agent", "message": "Fetch https://aws.amazon.com/bedrock"}
 ```
 
-## Project Structure
+### With Frontend (React)
+
+```typescript
+import { auth } from './firebase';
+
+const token = await auth.currentUser?.getIdToken();
+const ws = new WebSocket(`${WS_URL}?token=${token}`);
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  if (data.type === 'stream') {
+    console.log('Chunk:', data.chunk);
+  }
+};
+
+ws.send(JSON.stringify({ 
+  action: 'chat',  // or 'invoke-agent' for agent-core
+  message: 'Your message here' 
+}));
+```
+
+## 📖 Documentation
+
+Each example has comprehensive documentation:
+
+- **[Converse API README](./examples/converse-api/README.md)** - Direct API usage
+- **[Inline Agents README](./examples/inline-agents/README.md)** - Tool calling pattern
+- **[Agent Core README](./examples/agent-core/README.md)** - Full agent service
+
+## 🎓 Learning Path
+
+**Recommended progression:**
+
+1. **Start with [Converse API](./examples/converse-api/)** 
+   - Understand basic Bedrock integration
+   - Learn streaming responses
+   - Deploy in 5 minutes
+
+2. **Move to [Inline Agents](./examples/inline-agents/)**
+   - Add tool calling
+   - Implement custom logic
+   - Control orchestration
+
+3. **Graduate to [Agent Core](./examples/agent-core/)**
+   - Use managed agent service
+   - Multiple action groups
+   - Production workflows
+
+## 💰 Cost Breakdown
+
+**Example: 1,000 conversations, avg 1,000 tokens each**
+
+| Component | Converse | Inline | Agent Core |
+|-----------|----------|--------|------------|
+| Bedrock API | $5-7 | $6-8 | $8-10 |
+| Lambda | $0.10 | $0.20 | $0.20 |
+| API Gateway | $0.03 | $0.03 | $0.03 |
+| Logs | $0.50 | $0.50 | $0.50 |
+| **Total** | **$6-8** | **$7-9** | **$9-11** |
+
+💡 **Tip:** Start with Converse API for lowest cost while learning.
+
+## 🔐 Security
+
+All examples include:
+- ✅ Firebase JWT authentication
+- ✅ No hardcoded credentials (`.env` gitignored)
+- ✅ IAM least-privilege policies
+- ✅ WebSocket connection validation
+
+**Never commit:**
+- `.env` files
+- Firebase service account JSON
+- AWS credentials
+
+## 🤝 Contributing
+
+This repository is designed for learning and reference. Feel free to:
+- ⭐ Star the repo
+- 🍴 Fork and customize for your use case
+- 📝 Submit issues for bugs or questions
+- 💡 Share improvements via PRs
+
+## 📦 Repository Structure
 
 ```
 agent-core-stack/
-├── bin/
-│   └── agent-core-stack.ts       # CDK app entry (loads .env)
-├── lib/
-│   └── agent-core-stack.ts       # Main stack definition
-├── lambda/
-│   ├── authorizer/               # Firebase JWT validator
-│   │   ├── index.ts
-│   │   └── package.json          # firebase-admin dependency
-│   ├── hello-agent/              # Simple test handler
-│   │   └── index.ts
-│   └── websocket-agent/          # WebSocket + Bedrock Agent
-│       └── index.ts
-├── .memory-bank/                 # Project documentation
-├── .env                          # Firebase credentials (gitignored)
-├── package.json
-├── tsconfig.json
-└── cdk.json
+├── examples/
+│   ├── converse-api/      # Simplest: Direct API calls
+│   ├── inline-agents/     # Medium: Tool calling in Lambda
+│   └── agent-core/        # Advanced: Full Bedrock Agent
+├── shared/
+│   ├── auth/              # Firebase authorizer
+│   ├── websocket/         # WebSocket utilities
+│   └── types/             # TypeScript definitions
+├── .specs/                # Design docs and requirements
+├── README.md              # This file
+├── BLOG.md                # Social media content
+└── .env                   # Firebase credentials (gitignored)
 ```
 
-## Stack Resources
+## 🔧 Tech Stack
 
-### Bedrock Agent
-- **Model**: `anthropic.claude-sonnet-4-5-20250929-v1:0`
-- **Instructions**: Article reading and social media content generation
-- **Alias**: `production` (for stable invocation)
+- **AWS CDK** - Infrastructure as Code
+- **AWS Bedrock** - Claude Sonnet 4.5
+- **AWS Lambda** - Serverless compute (Node.js 20)
+- **API Gateway** - WebSocket API
+- **Firebase** - Authentication
+- **TypeScript** - Type-safe development
+- **Cheerio** - HTML parsing (inline-agents, agent-core)
 
-### Lambda Functions
-1. **FirebaseAuthorizer** - Validates Firebase ID tokens
-2. **WebSocketAgentFunction** - Handles WebSocket connections and streams Bedrock responses
+## 📚 Resources
 
-### API Gateway
-- **Type**: WebSocket API
-- **Routes**: `$connect`, `$disconnect`, `$default`
-- **Authorizer**: Lambda authorizer (query string token)
+- [AWS Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
+- [Anthropic Claude Documentation](https://docs.anthropic.com/)
+- [AWS CDK Guide](https://docs.aws.amazon.com/cdk/)
+- [Firebase Authentication](https://firebase.google.com/docs/auth)
 
-## Development
+## 🎯 Use Cases
 
-### Build TypeScript
+### Converse API Perfect For:
+- Chat interfaces
+- Q&A systems
+- Content generation
+- Code explanation
+- Tutoring applications
 
-```bash
-npm run build
-```
+### Inline Agents Perfect For:
+- Multi-tool applications
+- Custom workflows
+- API integrations
+- Data processing
+- Research assistants
 
-### Watch Mode
+### Agent Core Perfect For:
+- Production agent systems
+- Complex orchestration
+- Enterprise workflows
+- Multi-agent coordination
+- Managed infrastructure
 
-```bash
-npm run watch
-```
+## 📝 License
 
-### Synthesize CloudFormation
+MIT - Feel free to use for learning, commercial projects, or anything else!
 
-```bash
-npm run cdk synth
-```
+## 🙏 Acknowledgments
 
-### Compare Changes
+Built with:
+- AWS Bedrock and Claude Sonnet 4.5
+- Firebase for authentication
+- AWS CDK for infrastructure
+- Love for serverless architecture ❤️
 
-```bash
-npm run cdk diff
-```
+---
 
-### View Logs
+## 🚦 Quick Decision Guide
 
-```bash
-# Authorizer logs
-aws logs tail /aws/lambda/AgentCoreStack-FirebaseAuthorizer --follow
+**"I need..."**
 
-# WebSocket logs
-aws logs tail /aws/lambda/AgentCoreStack-WebSocketAgentFunction --follow
-```
+- 🟢 **Simple chat** → [Converse API](./examples/converse-api/)
+- 🟡 **Tools/functions** → [Inline Agents](./examples/inline-agents/)
+- 🔴 **Production agent** → [Agent Core](./examples/agent-core/)
 
-## Troubleshooting
+**"I want..."**
 
-### Docker not found during deployment
+- ⚡ **Fastest setup** → [Converse API](./examples/converse-api/) (5 min)
+- 💰 **Lowest cost** → [Converse API](./examples/converse-api/) ($6-8/mo)
+- 🎯 **Most control** → [Inline Agents](./examples/inline-agents/)
+- 🏢 **AWS managed** → [Agent Core](./examples/agent-core/)
 
-Install Docker Desktop and ensure it's running:
+**"I'm learning..."**
 
-```bash
-brew install --cask docker
-```
+- 📖 **Bedrock basics** → Start with [Converse API](./examples/converse-api/)
+- 🛠️ **Tool calling** → Move to [Inline Agents](./examples/inline-agents/)
+- 🤖 **Full agents** → Graduate to [Agent Core](./examples/agent-core/)
 
-### Firebase credentials error
+---
 
-Ensure `.env` file has proper format:
-- `FIREBASE_PRIVATE_KEY` must have `\n` for newlines (escaped)
-- All three variables must be set
+<div align="center">
 
-### WebSocket connection fails
+**Happy Building! 🚀**
 
-Check authorizer logs for token validation errors:
+[Report Bug](https://github.com/blueleader07/agent-core-stack/issues) · 
+[Request Feature](https://github.com/blueleader07/agent-core-stack/issues) · 
+[Star Repository ⭐](https://github.com/blueleader07/agent-core-stack)
 
-```bash
-aws logs tail /aws/lambda/AgentCoreStack-FirebaseAuthorizer --since 5m
-```
-
-### Bedrock model not available
-
-Verify you have access to Claude Sonnet 4.5 in your AWS region:
-
-```bash
-aws bedrock list-foundation-models --query 'modelSummaries[?contains(modelId, `claude-sonnet-4-5`)]'
-```
-
-Request model access: AWS Console > Bedrock > Model access
-
-## Security
-
-- ✅ **No credentials in git** - `.env` and `*firebase-adminsdk*.json` are gitignored
-- ✅ **JWT validation** - Every WebSocket connection requires valid Firebase token
-- ✅ **IAM least privilege** - Lambda functions have minimal required permissions
-- ✅ **CORS configured** - WebSocket allows Firebase Hosting origins
-
-## Cost Optimization
-
-- **Bedrock Agent**: Pay per token (Claude Sonnet 4.5 pricing)
-- **Lambda**: Free tier covers 1M requests/month
-- **API Gateway WebSocket**: $1.00 per million messages
-- **CloudWatch Logs**: First 5GB free
-
-**Estimated cost for 1000 agent conversations**: ~$5-10/month
-
-## Related Projects
-
-- **Frontend**: [social-media-draft-agent](https://github.com/blueleader07/social-media-draft-agent) - React app with Firebase Hosting
-- **Firebase Functions**: Article processing queue and daily digest
-
-## License
-
-MIT
-
-## Author
-
-Built with AWS CDK, Bedrock Agents, and Firebase Authentication.
+</div>

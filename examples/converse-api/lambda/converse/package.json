@@ -1,0 +1,14 @@
+{
+  "name": "converse-api-lambda",
+  "version": "1.0.0",
+  "description": "Direct Bedrock Converse API integration",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.709.0",
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.709.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "typescript": "~5.2.2"
+  }
+}
