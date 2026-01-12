@@ -16,15 +16,11 @@ body {
 }
 
 #root {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
+  height: 100vh;
 }
 
 .app {
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
@@ -85,10 +81,10 @@ body {
   background: #667eea;
 }
 
-.chat-container {
-  height: 600px;
+.app {
   display: flex;
   flex-direction: column;
+  height: 100vh;
 }
 
 .messages {
@@ -262,10 +258,44 @@ body {
   color: #92400e;
 }
 
-.agent-info {
-  padding: 2rem;
-  background: #f9fafb;
+.agent-info-toggle {
   border-bottom: 1px solid #e5e7eb;
+}
+
+.info-toggle-button {
+  width: 100%;
+  padding: 1rem 2rem;
+  background: #f9fafb;
+  border: none;
+  text-align: left;
+  font-size: 0.95rem;
+  color: #4b5563;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-toggle-button:hover {
+  background: #f3f4f6;
+}
+
+.agent-info-content {
+  padding: 1rem 2rem 2rem;
+  background: #f9fafb;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
 }
 
 .agent-info h3 {
@@ -311,20 +341,21 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.clear-button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: #ef4444;
+.reset-button {
+  padding: 0.75rem 1.5rem;
+  background: #6b7280;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
+  margin-left: 0.5rem;
 }
 
-.clear-button:hover {
-  background: #dc2626;
+.reset-button:hover {
+  background: #4b5563;
 }
 
 .example-queries {
@@ -348,4 +379,72 @@ body {
   background: #667eea;
   color: white;
   border-color: #667eea;
+}
+
+.auth-prompt {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.auth-prompt p {
+  margin-bottom: 1rem;
+  color: #6b7280;
+}
+
+.auth-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-button.google {
+  background: white;
+  color: #333;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-button.google:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.auth-button.signout {
+  background: #ef4444;
+  color: white;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+.auth-button.signout:hover {
+  background: #dc2626;
+}
+
+.auth-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #d1fae5;
+  border-radius: 8px;
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-email {
+  color: #065f46;
+  font-weight: 600;
+  font-size: 0.875rem;
 }

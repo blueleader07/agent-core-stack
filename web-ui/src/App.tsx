@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { CognitoAuth } from './CognitoAuth';
 
 interface Message {
   role: 'user' | 'assistant' | 'system' | 'error';
@@ -67,12 +68,19 @@ function App() {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
-  const [firebaseToken, setFirebaseToken] = useState(
-    localStorage.getItem('firebaseToken') || ''
-  );
+  const [authToken, setAuthToken] = useState('');
+  const [showInfo, setShowInfo] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Cognito configuration from environment variables
+  const cognitoConfig = {
+    userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || '',
+    clientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
+    domain: import.meta.env.VITE_COGNITO_DOMAIN || '',
+    region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -82,14 +90,12 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
+  // Auto-connect when active agent changes or auth token is available
   useEffect(() => {
-    // Save Firebase token to localStorage
-    if (firebaseToken) {
-      localStorage.setItem('firebaseToken', firebaseToken);
+    if (authToken && AGENT_CONFIGS[activeAgent].wsUrl) {
+      connect();
     }
-  }, [firebaseToken]);
-
-  useEffect(() => {
+    
     // Disconnect when switching agents or unmounting
     return () => {
       if (wsRef.current) {
@@ -97,7 +103,7 @@ function App() {
         wsRef.current = null;
       }
     };
-  }, [activeAgent]);
+  }, [activeAgent, authToken]);
 
   const connect = () => {
     const config = AGENT_CONFIGS[activeAgent];
@@ -107,8 +113,8 @@ function App() {
       return;
     }
 
-    if (!firebaseToken) {
-      addMessage('error', 'Firebase token required. Get one from Firebase Console.');
+    if (!authToken) {
+      addMessage('error', 'Please sign in with Google first.');
       return;
     }
 
@@ -119,13 +125,12 @@ function App() {
       wsRef.current.close();
     }
 
-    // Create WebSocket with Firebase token
-    const ws = new WebSocket(`${config.wsUrl}?token=${encodeURIComponent(firebaseToken)}`);
+    // Create WebSocket with auth token
+    const ws = new WebSocket(`${config.wsUrl}?token=${encodeURIComponent(authToken)}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
       setConnectionStatus('connected');
-      addMessage('system', `Connected to ${config.name}`);
     };
 
     ws.onmessage = (event) => {
@@ -154,12 +159,6 @@ function App() {
           });
         } else if (data.type === 'complete') {
           setIsStreaming(false);
-          if (data.usage) {
-            addMessage(
-              'system',
-              `Completed. Tokens: ${data.usage.inputTokens + data.usage.outputTokens}`
-            );
-          }
         } else if (data.type === 'error') {
           addMessage('error', data.error || 'Unknown error');
           setIsStreaming(false);
@@ -177,7 +176,6 @@ function App() {
 
     ws.onclose = () => {
       setConnectionStatus('disconnected');
-      addMessage('system', 'Disconnected');
       setIsStreaming(false);
     };
   };
@@ -194,7 +192,7 @@ function App() {
     if (!messageText) return;
 
     if (connectionStatus !== 'connected') {
-      addMessage('error', 'Not connected. Click the connection status to connect.');
+      addMessage('error', 'Waiting for connection...');
       return;
     }
 
@@ -228,6 +226,31 @@ function App() {
 
   const config = AGENT_CONFIGS[activeAgent];
 
+  // Show only sign-in screen if not authenticated
+  if (!authToken) {
+    return (
+      <div className="app">
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '2rem',
+          textAlign: 'center',
+        }}>
+          <h1 style={{ fontSize: '3rem', marginBottom: '1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            AWS Bedrock Integration Examples
+          </h1>
+          <p style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '3rem', maxWidth: '600px' }}>
+            Compare three different patterns for building AI agents with AWS Bedrock
+          </p>
+          <CognitoAuth config={cognitoConfig} onTokenReceived={setAuthToken} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -250,54 +273,48 @@ function App() {
         ))}
       </div>
 
-      <div className="agent-info">
-        <h3>{config.name}</h3>
-        <p>{config.description}</p>
-        <ul className="feature-list">
-          {config.features.map((feature, i) => (
-            <li key={i}>{feature}</li>
-          ))}
-        </ul>
-
-        <div className="config-section">
-          <h4>Firebase Authentication Token</h4>
-          <input
-            type="password"
-            className="config-input"
-            placeholder="Paste your Firebase ID token here"
-            value={firebaseToken}
-            onChange={(e) => setFirebaseToken(e.target.value)}
-          />
-        </div>
-
-        <div className="example-queries">
-          <strong style={{ width: '100%', marginBottom: '0.5rem', display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>
-            Try these examples:
-          </strong>
-          {config.examples.map((example, i) => (
-            <button
-              key={i}
-              className="example-query"
-              onClick={() => handleExampleClick(example)}
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div
         className={`connection-status ${connectionStatus}`}
-        onClick={connectionStatus === 'disconnected' ? connect : undefined}
-        style={{ cursor: connectionStatus === 'disconnected' ? 'pointer' : 'default' }}
       >
         {connectionStatus === 'connected' && '✓ Connected'}
         {connectionStatus === 'connecting' && '⏳ Connecting...'}
-        {connectionStatus === 'disconnected' && '○ Disconnected - Click to connect'}
+        {connectionStatus === 'disconnected' && '○ Disconnected'}
       </div>
 
-      <div className="chat-container">
-        <div className="messages">
+      <div className="agent-info-toggle">
+        <button 
+          className="info-toggle-button"
+          onClick={() => setShowInfo(!showInfo)}
+        >
+          {showInfo ? '▼' : '▶'} {config.name} - {config.description}
+        </button>
+        {showInfo && (
+          <div className="agent-info-content">
+            <ul className="feature-list">
+              {config.features.map((feature, i) => (
+                <li key={i}>{feature}</li>
+              ))}
+            </ul>
+
+            <div className="example-queries">
+              <strong style={{ width: '100%', marginBottom: '0.5rem', display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>
+                Try these examples:
+              </strong>
+              {config.examples.map((example, i) => (
+                <button
+                  key={i}
+                  className="example-query"
+                  onClick={() => handleExampleClick(example)}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="messages">
           {messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role}`}>
               <div className="message-label">
@@ -320,14 +337,9 @@ function App() {
             </div>
           )}
           <div ref={messagesEndRef} />
-        </div>
+      </div>
 
-        <div className="input-area">
-          {messages.length > 0 && (
-            <button className="clear-button" onClick={clearChat}>
-              Clear Chat
-            </button>
-          )}
+      <div className="input-area">
           <form onSubmit={handleSubmit} className="input-form">
             <div className="input-wrapper">
               <input
@@ -346,9 +358,17 @@ function App() {
             >
               Send
             </button>
+            {messages.length > 0 && (
+              <button
+                type="button"
+                className="reset-button"
+                onClick={clearChat}
+              >
+                Reset
+              </button>
+            )}
           </form>
         </div>
-      </div>
     </div>
   );
 }
