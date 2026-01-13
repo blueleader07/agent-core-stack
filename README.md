@@ -98,7 +98,7 @@ const agent = new bedrock.CfnAgent({
 |---------|--------------|---------------|------------|
 | **Complexity** | Low | Medium | High |
 | **First Token Latency** | 1-2s | 2-3s | 3-5s |
-| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $9-11 |
+| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $15-25 |
 | **Setup Time** | 5 min | 10 min | 15 min |
 | **Code to Write** | High | Medium | Low |
 | **Tool Calling** | Manual | Manual | Built-in |
@@ -108,7 +108,15 @@ const agent = new bedrock.CfnAgent({
 | **Control Level** | Highest | High | Medium |
 | **AWS Management** | None | Minimal | Full |
 
-**\* Cost estimates:** Actual costs depend heavily on conversation length, tool usage, and session frequency. The difference between Converse API and Inline Agents is negligible (both use Lambda + Bedrock API calls). Agent Core includes additional costs from the Bedrock Agents service, which varies based on usage.
+**\* Cost estimates:** Actual costs depend heavily on conversation length, tool usage, and session frequency. 
+
+**Cost Breakdown by Pattern:**
+- **Converse API & Inline Agents**: Pay only for LLM tokens + minimal Lambda costs (~$0.20/1M requests)
+- **Agent Core**: Pay for LLM tokens **+ Runtime compute** (CPU: $0.0895/vCPU-hour, Memory: $0.00945/GB-hour) **+ Gateway APIs** (if using tools). Runtime charges apply for entire session duration, making Agent Core 2-3x more expensive for equivalent conversations.
+
+**Cost Tracking:**
+- **Converse API & Inline Agents**: Real-time token usage displayed in the UI
+- **Agent Core**: Token usage available via [CloudWatch Metrics](./examples/agent-core/README.md#tracking-actual-usage) (5-15 min delay)
 
 ## 🏗️ Architecture Overview
 
@@ -253,17 +261,24 @@ Each example has comprehensive documentation:
 
 ## 💰 Cost Breakdown
 
-**Example: 1,000 conversations, avg 1,000 tokens each**
+**Example: 1,000 conversations, avg 1,000 tokens each, 60-second sessions**
 
 | Component | Converse | Inline | Agent Core |
 |-----------|----------|--------|------------|
-| Bedrock API | $5-7 | $6-8 | $8-10 |
+| Bedrock LLM (tokens) | $5-7 | $6-8 | $8-10 |
+| Runtime Compute (CPU+Memory) | — | — | $7-15* |
 | Lambda | $0.10 | $0.20 | $0.20 |
 | API Gateway | $0.03 | $0.03 | $0.03 |
 | Logs | $0.50 | $0.50 | $0.50 |
-| **Total** | **$6-8** | **$7-9** | **$9-11** |
+| **Total** | **$6-8** | **$7-9** | **$15-25** |
 
-💡 **Tip:** Start with Converse API for lowest cost while learning.
+**\* Agent Core Runtime charges:**
+- CPU: $0.0895/vCPU-hour (charged per second of active processing)
+- Memory: $0.00945/GB-hour (charged continuously during session)
+- Example: 60s session with 1vCPU, 2GB memory ≈ $0.015/session
+- 1,000 sessions ≈ $15 in runtime costs alone
+
+💡 **Tip:** Start with Converse API for lowest cost while learning. Use Agent Core only when you need built-in orchestration, session management, or multi-agent workflows that justify the 2-3x cost premium.
 
 ## 🔐 Security
 
