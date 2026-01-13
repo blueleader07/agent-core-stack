@@ -186,6 +186,9 @@ Use the available tools when needed to help answer user questions.`,
   let continueLoop = true;
   let loopCount = 0;
   const MAX_LOOPS = 10;
+  let totalTokenCount = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
   while (continueLoop && loopCount < MAX_LOOPS) {
     loopCount++;
@@ -235,6 +238,12 @@ Use the available tools when needed to help answer user questions.`,
           if (lastTool) {
             Object.assign(lastTool.input, event.contentBlockDelta.delta.toolUse.input || {});
           }
+        }
+
+        if (event.metadata?.usage) {
+          totalTokenCount += (event.metadata.usage.inputTokens ?? 0) + (event.metadata.usage.outputTokens ?? 0);
+          totalInputTokens += event.metadata.usage.inputTokens ?? 0;
+          totalOutputTokens += event.metadata.usage.outputTokens ?? 0;
         }
 
         if (event.messageStop?.stopReason) {
@@ -300,6 +309,9 @@ Use the available tools when needed to help answer user questions.`,
   // Send completion signal
   await sendToConnection(client, connectionId, {
     type: 'complete',
+    totalTokens: totalTokenCount,
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
     timestamp: new Date().toISOString(),
   });
 }

@@ -241,6 +241,16 @@ body {
   text-align: center;
   font-size: 0.875rem;
   font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.connection-status .usage-stats {
+  font-weight: 400;
+  opacity: 0.8;
+  font-size: 0.8125rem;
 }
 
 .connection-status.connected {
@@ -285,6 +295,17 @@ body {
   padding: 1rem 2rem 2rem;
   background: #f9fafb;
   animation: slideDown 0.2s ease-out;
+}
+
+.info-note {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #92400e;
+  line-height: 1.5;
 }
 
 @keyframes slideDown {

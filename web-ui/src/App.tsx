@@ -11,7 +11,14 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 type AgentType = 'converse' | 'inline' | 'agent-core';
 
-const AGENT_CONFIGS = {
+const AGENT_CONFIGS: Record<AgentType, {
+  name: string;
+  wsUrl: string;
+  description: string;
+  features: string[];
+  examples: string[];
+  note?: string;
+}> = {
   converse: {
     name: 'Converse API',
     wsUrl: import.meta.env.VITE_CONVERSE_WS_URL || '',
@@ -59,6 +66,7 @@ const AGENT_CONFIGS = {
       'What can you help me with?',
       'Analyze the content from https://techcrunch.com',
     ],
+    note: '💡 Cost tracking: Agent Core API doesn\'t expose token usage. View actual usage in CloudWatch Metrics (AWS Bedrock > Agent metrics)',
   },
 };
 
@@ -70,9 +78,15 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [authToken, setAuthToken] = useState('');
   const [showInfo, setShowInfo] = useState(false);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [totalCost, setTotalCost] = useState(0);
   
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Claude Sonnet 4.5 pricing
+  const COST_PER_INPUT_TOKEN = 0.000003;  // $3 per million tokens
+  const COST_PER_OUTPUT_TOKEN = 0.000015; // $15 per million tokens
 
   // Cognito configuration from environment variables
   const cognitoConfig = {
@@ -158,7 +172,18 @@ function App() {
             }
           });
         } else if (data.type === 'complete') {
+          console.log('Complete event received:', data);
+          console.log('Total tokens:', data.totalTokens);
+          console.log('Input tokens:', data.inputTokens);
+          console.log('Output tokens:', data.outputTokens);
           setIsStreaming(false);
+          if (data.totalTokens) {
+            setTotalTokens(prev => prev + data.totalTokens);
+            const cost = (data.inputTokens || 0) * COST_PER_INPUT_TOKEN + 
+                        (data.outputTokens || 0) * COST_PER_OUTPUT_TOKEN;
+            console.log('Calculated cost:', cost);
+            setTotalCost(prev => prev + cost);
+          }
         } else if (data.type === 'error') {
           addMessage('error', data.error || 'Unknown error');
           setIsStreaming(false);
@@ -276,9 +301,16 @@ function App() {
       <div
         className={`connection-status ${connectionStatus}`}
       >
-        {connectionStatus === 'connected' && '✓ Connected'}
-        {connectionStatus === 'connecting' && '⏳ Connecting...'}
-        {connectionStatus === 'disconnected' && '○ Disconnected'}
+        <span>
+          {connectionStatus === 'connected' && '✓ Connected'}
+          {connectionStatus === 'connecting' && '⏳ Connecting...'}
+          {connectionStatus === 'disconnected' && '○ Disconnected'}
+        </span>
+        {totalTokens > 0 && (
+          <span className="usage-stats">
+            {totalTokens.toLocaleString()} tokens · ${totalCost.toFixed(4)}
+          </span>
+        )}
       </div>
 
       <div className="agent-info-toggle">
@@ -295,6 +327,12 @@ function App() {
                 <li key={i}>{feature}</li>
               ))}
             </ul>
+
+            {config.note && (
+              <div className="info-note">
+                {config.note}
+              </div>
+            )}
 
             <div className="example-queries">
               <strong style={{ width: '100%', marginBottom: '0.5rem', display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>

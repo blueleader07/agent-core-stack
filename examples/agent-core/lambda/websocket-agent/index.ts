@@ -200,6 +200,10 @@ async function streamAgentResponse(
 
     const response = await bedrockClient.send(command);
 
+    let tokenCount = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
+
     // Stream response chunks to client
     if (response.completion) {
       for await (const event of response.completion) {
@@ -214,12 +218,23 @@ async function streamAgentResponse(
             timestamp: new Date().toISOString(),
           });
         }
+
+        // Track tokens from returnControl events (agent orchestration metadata)
+        if (event.returnControl?.invocationInputs) {
+          // Agent Core doesn't expose usage directly in streaming,
+          // but we can track it via CloudWatch metrics or estimate
+          // For now, we'll leave at 0 but structure is ready
+        }
       }
     }
 
     // Send completion signal
+    console.log('Sending complete with tokens:', { totalTokens: tokenCount, inputTokens, outputTokens });
     await sendToConnection(client, connectionId, {
       type: 'complete',
+      totalTokens: tokenCount || 0,
+      inputTokens: inputTokens || 0,
+      outputTokens: outputTokens || 0,
       timestamp: new Date().toISOString(),
     });
 

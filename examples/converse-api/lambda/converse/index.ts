@@ -147,10 +147,16 @@ async function callConverseAPI(
 
   let fullText = '';
   let tokenCount = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let stopReason: string | undefined;
 
   // Stream response to client
   if (response.stream) {
     for await (const event of response.stream) {
+      // Debug: Log event structure
+      console.log('Stream event:', JSON.stringify(event, null, 2));
+      
       // Handle text chunks
       if (event.contentBlockDelta?.delta?.text) {
         const chunk = event.contentBlockDelta.delta.text;
@@ -165,19 +171,28 @@ async function callConverseAPI(
 
       // Handle metadata
       if (event.metadata?.usage) {
+        console.log('Found usage metadata:', event.metadata.usage);
         tokenCount = (event.metadata.usage.inputTokens ?? 0) + (event.metadata.usage.outputTokens ?? 0);
+        inputTokens = event.metadata.usage.inputTokens ?? 0;
+        outputTokens = event.metadata.usage.outputTokens ?? 0;
       }
 
-      // Handle completion
+      // Track stop reason (but don't send complete yet - metadata comes after)
       if (event.messageStop) {
-        await sendToConnection(client, connectionId, {
-          type: 'complete',
-          stopReason: event.messageStop.stopReason,
-          totalTokens: tokenCount,
-          timestamp: new Date().toISOString(),
-        });
+        stopReason = event.messageStop.stopReason;
       }
     }
+    
+    // Send complete event after processing all events (including metadata)
+    console.log('Sending complete event with tokens:', { totalTokens: tokenCount, inputTokens, outputTokens });
+    await sendToConnection(client, connectionId, {
+      type: 'complete',
+      stopReason: stopReason || 'end_turn',
+      totalTokens: tokenCount,
+      inputTokens,
+      outputTokens,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   console.log(`Conversation complete. Tokens: ${tokenCount}, Text length: ${fullText.length}`);
