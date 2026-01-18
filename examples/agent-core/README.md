@@ -358,6 +358,37 @@ const agent = new ToolLoopAgent({
 
 ## Troubleshooting
 
+### "Container returns 500 error" or "No response body"
+
+**Issue**: AgentCore Runtime container fails to authenticate with Bedrock, returns HTTP 500.
+
+**Root Cause**: Missing **Workload Identity** permissions. The container needs special permissions to obtain temporary AWS credentials via the AgentCore service.
+
+**Solution**: Add Workload Identity permissions to the AgentCore Runtime IAM role:
+
+```typescript
+// In agentcore-runtime-stack.ts
+agentCoreRole.addToPolicy(new PolicyStatement({
+  effect: Effect.ALLOW,
+  actions: [
+    'bedrock-agentcore:GetWorkloadAccessToken',
+    'bedrock-agentcore:GetWorkloadAccessTokenForJwt',
+    'bedrock-agentcore:GetWorkloadAccessTokenForUserId',
+  ],
+  resources: [
+    `arn:aws:bedrock-agentcore:${this.region}:${this.account}:workload-identity-directory/*`,
+  ],
+}));
+```
+
+**Why This Matters**: 
+- The container doesn't have direct AWS credentials
+- It must call `bedrock-agentcore:GetWorkloadAccessToken` to get temporary credentials
+- Without these permissions, all Bedrock API calls fail with 500 errors
+- This is different from standard IAM roles - it's a special AgentCore authentication mechanism
+
+**Reference**: See AWS sample at `github.com/awslabs/amazon-bedrock-agentcore-samples` for the complete `AgentCoreRole` implementation.
+
 ### "Application Signals not enabled"
 
 Enable CloudWatch Application Signals:
