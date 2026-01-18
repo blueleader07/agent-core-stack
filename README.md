@@ -1,6 +1,6 @@
 # AWS Bedrock Integration Examples
 
-Four patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
+Five patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
 
 > **⚠️ DEMO PROJECT NOTICE**  
 > This is a demonstration/educational project showcasing different AWS Bedrock integration patterns. Before deploying to production, please review the [SECURITY.md](./SECURITY.md) documentation and conduct a thorough security audit of authentication, authorization, and API security configurations.
@@ -14,11 +14,12 @@ Choose your pattern based on your needs:
 | [**Converse API**](./examples/converse-api/) | Simple chat, Q&A, prototyping | ⭐ Low | 5 min |
 | [**Inline Agents**](./examples/inline-agents/) | Tool calling, custom logic | ⭐⭐ Medium | 10 min |
 | [**Bedrock Agents**](./examples/bedrock-agents/) | Infrastructure-based agents, CDK deployment | ⭐⭐⭐ High | 15 min |
-| [**AgentCore Runtime**](./examples/agent-core/) | Containerized agents, ADOT observability | ⭐⭐⭐⭐ Advanced | 20 min |
+| [**Lambda + LangGraph**](./examples/agent-core/) | Containerized Lambda with observability | ⭐⭐⭐ High | 15 min |
+| [**AgentCore + LangGraph**](./examples/agent-core/) | Real AgentCore Runtime with CloudWatch metrics | ⭐⭐⭐⭐ Advanced | 20 min |
 
 ## 📚 What's Inside
 
-This repository demonstrates **four different approaches** to building AI applications with AWS Bedrock:
+This repository demonstrates **five different approaches** to building AI applications with AWS Bedrock:
 
 ### 1. [Converse API](./examples/converse-api/) - **Simplest Pattern**
 
@@ -95,67 +96,91 @@ const agent = new bedrock.CfnAgent({
 
 ---
 
-### 4. [AgentCore Runtime](./examples/agent-core/) - **Advanced Pattern**
+### 4. [Lambda + LangGraph](./examples/agent-core/) - **Containerized Lambda Pattern**
 
-New AgentCore service with containerized agents and full observability.
+LangGraph agent in containerized Lambda with ADOT observability.
 
 ```typescript
-// Runtime agent with ADOT instrumentation
-import { AgentCore } from '@aws/bedrock-agentcore-sdk-typescript';
-
-const agent = new AgentCore({
-  // Agent code runs in managed container
-  // Full ADOT observability
-  // Dynamic configuration at runtime
-});
+// LangGraph in container, Lambda runtime
+const graph = new StateGraph(GraphState)
+  .addNode('agent', callModel)
+  .addNode('tools', toolNode)
+  .addEdge(START, 'agent')
+  .addConditionalEdges('agent', shouldContinue);
 ```
 
 **When to use:**
-- ✅ Advanced observability (ADOT/CloudWatch)
-- ✅ Containerized agent workflows
-- ✅ Runtime configuration changes
-- ✅ Complex trace analysis
+- ✅ LangGraph workflows
+- ✅ ADOT/OpenTelemetry observability
+- ✅ CloudWatch Application Signals
 - ✅ Custom instrumentation
-- ✅ Multi-framework support
+- ✅ Fast iteration (Lambda deployment)
 
-**[View AgentCore Runtime Example →](./examples/agent-core/)**
+**[View Lambda + LangGraph Example →](./examples/agent-core/)**
+
+---
+
+### 5. [AgentCore + LangGraph](./examples/agent-core/) - **AgentCore Runtime Pattern**
+
+Real AWS Bedrock AgentCore Runtime with LangGraph agent in managed container.
+
+```typescript
+// Lambda proxy → Real AgentCore Runtime → Container
+const response = await agentCoreClient.send(
+  new InvokeAgentRuntimeCommand({
+    agentRuntimeArn: 'arn:aws:bedrock-agentcore:...',
+    payload: { prompt: 'Hello!' }
+  })
+);
+// Populates CloudWatch AgentCore metrics
+```
+
+**When to use:**
+- ✅ CloudWatch AgentCore metrics needed
+- ✅ Production AgentCore deployment
+- ✅ Managed container orchestration
+- ✅ Runtime session management
+- ✅ Multi-endpoint support
+
+**[View AgentCore + LangGraph Example →](./examples/agent-core/)**
 
 ---
 
 ## 📊 Pattern Comparison
 
-| Feature | Converse API | Inline Agents | Bedrock Agents | AgentCore Runtime |
-|---------|--------------|---------------|----------------|-------------------|
-| **Complexity** | Low | Medium | High | Advanced |
-| **First Token Latency** | 1-2s | 2-3s | 3-5s | 3-5s |
-| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $15-25 | $20-35 |
-| **Setup Time** | 5 min | 10 min | 15 min | 20 min |
-| **Code to Write** | High | Medium | Low | Medium |
-| **Tool Calling** | Manual | Manual | Built-in | Built-in |
-| **Multi-Agent** | Manual | Manual | Built-in | Built-in |
-| **Session Management** | Manual | Manual | Built-in | Built-in |
-| **Iteration Speed** | Fastest | Fast | Slow | Medium |
-| **Control Level** | Highest | High | Medium | High |
-| **AWS Management** | None | Minimal | Full | Full |
-| **Observability** | Basic | Basic | CloudWatch Metrics | Full ADOT/Traces |
-| **Deployment Type** | Lambda | Lambda | CDK Infrastructure | Container Runtime |
-| **Config Changes** | Instant | Instant | Requires Redeploy | Runtime |
+| Feature | Converse API | Inline Agents | Bedrock Agents | Lambda + LangGraph | AgentCore + LangGraph |
+|---------|--------------|---------------|----------------|--------------------|----------------------|
+| **Complexity** | Low | Medium | High | High | Advanced |
+| **First Token Latency** | 1-2s | 2-3s | 3-5s | 2-3s | 3-5s |
+| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $15-25 | $10-15 | $20-35 |
+| **Setup Time** | 5 min | 10 min | 15 min | 15 min | 20 min |
+| **Code to Write** | High | Medium | Low | Medium | Medium |
+| **Tool Calling** | Manual | Manual | Built-in | Built-in | Built-in |
+| **Multi-Agent** | Manual | Manual | Built-in | Built-in | Built-in |
+| **Session Management** | Manual | Manual | Built-in | Manual | Built-in |
+| **Iteration Speed** | Fastest | Fast | Slow | Fast | Medium |
+| **Control Level** | Highest | High | Medium | Highest | High |
+| **AWS Management** | None | Minimal | Full | Minimal | Full |
+| **Observability** | Basic | Basic | CloudWatch Metrics | Full ADOT/Traces | Full ADOT + AgentCore Metrics |
+| **Deployment Type** | Lambda | Lambda | CDK Infrastructure | Containerized Lambda | AgentCore Runtime |
+| **Config Changes** | Instant | Instant | Requires Redeploy | Instant | Runtime |
+| **Token Usage Tracking** | Real-time | Real-time | CloudWatch (delayed) | Real-time | Real-time |
 
 **\* Cost estimates:** Actual costs depend heavily on conversation length, tool usage, and session frequency. 
 
 **Cost Breakdown by Pattern:**
 - **Converse API & Inline Agents**: Pay only for LLM tokens + minimal Lambda costs (~$0.20/1M requests)
 - **Bedrock Agents**: Pay for LLM tokens **+ Runtime compute** (CPU: $0.0895/vCPU-hour, Memory: $0.00945/GB-hour). Runtime charges apply for entire session duration, making it 2-3x more expensive than Converse/Inline patterns.
-- **AgentCore Runtime**: Pay for LLM tokens **+ Container runtime** + ADOT ingestion costs. Most expensive but offers full observability and flexibility.
+- **Lambda + LangGraph**: Pay for LLM tokens + containerized Lambda runtime (~$0.20/1M requests + container overhead)
+- **AgentCore + LangGraph**: Pay for LLM tokens **+ AgentCore Runtime** + ADOT ingestion costs. Most expensive but offers full observability and CloudWatch AgentCore metrics.
 
 **Cost Tracking:**
-- **Converse API & Inline Agents**: Real-time token usage displayed in the UI
+- **Converse API, Inline Agents, Lambda + LangGraph, AgentCore + LangGraph**: Real-time token usage displayed in the UI
 - **Bedrock Agents**: Token usage available via [CloudWatch Metrics](./examples/bedrock-agents/README.md#tracking-actual-usage) (5-15 min delay)
-- **AgentCore Runtime**: Full ADOT traces, spans, and metrics with CloudWatch Application Signals
 
 ## 🏗️ Architecture Overview
 
-All three examples share:
+All examples share:
 - 🤖 **Claude Sonnet 4.5** via Bedrock
 - 🔐 **Firebase Authentication** (JWT tokens)
 - ⚡ **WebSocket API** for streaming
