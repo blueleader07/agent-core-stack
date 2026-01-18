@@ -4,6 +4,18 @@ node_modules
 cdk.out
 .env
 
+# Build artifacts
+dist/
+*.map
+package-lock.json
+
+# Backup files
+*.bck
+*.backup
+
+# Migration docs (project-specific)
+QUICKSELL_MIGRATION.md
+
 # Firebase service account credentials (NEVER COMMIT!)
 *firebase-adminsdk*.json
 automation-station-*.json

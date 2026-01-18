@@ -1,9 +1,9 @@
 {
-  "name": "bedrock-agentcore-runtime-example",
+  "name": "bedrock-agents-example",
   "version": "1.0.0",
-  "description": "AgentCore Runtime with TypeScript SDK - containerized agents with ADOT observability",
+  "description": "Traditional Bedrock Agents (Infrastructure-as-Code) - WebSocket streaming example",
   "bin": {
-    "agent-core": "bin/agent-core.js"
+    "bedrock-agents": "bin/bedrock-agents.js"
   },
   "scripts": {
     "build": "tsc",
@@ -21,19 +21,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.709.0",
-    "@aws-sdk/client-bedrock-agentcore": "^3.971.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.709.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.709.0",
     "@aws-sdk/client-sts": "^3.966.0",
-    "@langchain/aws": "^1.2.0",
-    "@langchain/core": "^1.1.15",
-    "@langchain/langgraph": "^1.1.0",
     "aws-cdk-lib": "2.149.0",
-    "axios": "^1.7.9",
-    "bedrock-agentcore": "^0.1.1",
     "constructs": "^10.0.0",
     "dotenv": "^17.2.3",
-    "langchain": "^1.2.10",
-    "source-map-support": "^0.5.21",
-    "zod": "^4.3.5"
+    "source-map-support": "^0.5.21"
   }
 }

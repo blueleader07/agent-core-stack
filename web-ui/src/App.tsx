@@ -9,7 +9,7 @@ interface Message {
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-type AgentType = 'converse' | 'inline' | 'agent-core';
+type AgentType = 'converse' | 'inline' | 'bedrock-agents' | 'agentcore-runtime' | 'agentcore-proxy';
 
 const AGENT_CONFIGS: Record<AgentType, {
   name: string;
@@ -51,9 +51,9 @@ const AGENT_CONFIGS: Record<AgentType, {
       'What\'s the weather in San Francisco?',
     ],
   },
-  'agent-core': {
-    name: 'Agent Core',
-    wsUrl: import.meta.env.VITE_AGENT_CORE_WS_URL || '',
+  'bedrock-agents': {
+    name: 'Bedrock Agents',
+    wsUrl: import.meta.env.VITE_BEDROCK_AGENTS_WS_URL || '',
     description: 'Full Bedrock Agent service with action groups and orchestration',
     features: [
       'Bedrock-managed agent lifecycle',
@@ -66,7 +66,41 @@ const AGENT_CONFIGS: Record<AgentType, {
       'What can you help me with?',
       'Analyze the content from https://techcrunch.com',
     ],
-    note: '💡 Cost tracking: Agent Core API doesn\'t expose token usage. View actual usage in CloudWatch Metrics (AWS Bedrock > Agent metrics)',
+    note: '💡 Cost tracking: Bedrock Agents API doesn\'t expose token usage. View actual usage in CloudWatch Metrics (AWS Bedrock > Agent metrics)',
+  },
+  'agentcore-runtime': {
+    name: 'Lambda + LangGraph',
+    wsUrl: import.meta.env.VITE_AGENTCORE_RUNTIME_WS_URL || '',
+    description: 'Containerized Lambda with ADOT observability - runtime-based approach without infrastructure agents',
+    features: [
+      'Direct Bedrock Converse API calls',
+      'Custom tool implementations in code',
+      'ADOT/OpenTelemetry observability',
+      'CloudWatch Application Signals',
+    ],
+    examples: [
+      'Read and summarize https://techcrunch.com',
+      'What is the weather in Paris?',
+      'Explain the article at https://aws.amazon.com/blogs',
+    ],
+    note: '📊 Full observability: View traces, metrics, and application signals in CloudWatch',
+  },
+  'agentcore-proxy': {
+    name: 'AgentCore + LangGraph',
+    wsUrl: import.meta.env.VITE_AGENTCORE_PROXY_WS_URL || '',
+    description: 'Lambda proxy to REAL AWS Bedrock AgentCore Runtime - populates CloudWatch AgentCore metrics',
+    features: [
+      'Invokes real AgentCore Runtime service',
+      'CloudWatch AgentCore metrics populated',
+      'LangGraph agent in ARM64 container',
+      'SSE streaming from AgentCore',
+    ],
+    examples: [
+      'Read and summarize https://techcrunch.com',
+      'What are the key points from https://aws.amazon.com/bedrock',
+      'Tell me about this article: https://bbc.com/news',
+    ],
+    note: '🎯 Real AgentCore: This invokes the actual AWS Bedrock AgentCore Runtime service for CloudWatch metrics',
   },
 };
 

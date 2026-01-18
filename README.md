@@ -1,6 +1,6 @@
 # AWS Bedrock Integration Examples
 
-Three patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
+Four patterns for integrating AWS Bedrock with Claude Sonnet 4.5 - from simplest to most sophisticated.
 
 > **⚠️ DEMO PROJECT NOTICE**  
 > This is a demonstration/educational project showcasing different AWS Bedrock integration patterns. Before deploying to production, please review the [SECURITY.md](./SECURITY.md) documentation and conduct a thorough security audit of authentication, authorization, and API security configurations.
@@ -13,11 +13,12 @@ Choose your pattern based on your needs:
 |---------|----------|------------|------------|
 | [**Converse API**](./examples/converse-api/) | Simple chat, Q&A, prototyping | ⭐ Low | 5 min |
 | [**Inline Agents**](./examples/inline-agents/) | Tool calling, custom logic | ⭐⭐ Medium | 10 min |
-| [**Agent Core**](./examples/agent-core/) | Production workflows, multiple tools | ⭐⭐⭐ High | 15 min |
+| [**Bedrock Agents**](./examples/bedrock-agents/) | Infrastructure-based agents, CDK deployment | ⭐⭐⭐ High | 15 min |
+| [**AgentCore Runtime**](./examples/agent-core/) | Containerized agents, ADOT observability | ⭐⭐⭐⭐ Advanced | 20 min |
 
 ## 📚 What's Inside
 
-This repository demonstrates **three different approaches** to building AI applications with AWS Bedrock:
+This repository demonstrates **four different approaches** to building AI applications with AWS Bedrock:
 
 ### 1. [Converse API](./examples/converse-api/) - **Simplest Pattern**
 
@@ -68,55 +69,89 @@ while (needsMoreTools) {
 
 ---
 
-### 3. [Agent Core](./examples/agent-core/) - **Production Pattern**
+### 3. [Bedrock Agents](./examples/bedrock-agents/) - **Infrastructure Pattern**
 
-Full AWS Bedrock Agent service with action groups.
+Traditional Bedrock Agents deployed as infrastructure via CDK.
 
 ```typescript
-// AWS manages the agent lifecycle
+// Infrastructure-as-code: agent defined at deploy time
 const agent = new bedrock.CfnAgent({
   foundationModel: 'claude-sonnet-4-5',
   actionGroups: [urlFetcher, calculator, database],
-  // AWS handles orchestration, memory, sessions
+  instructions: 'Set at deploy time',
+  // AWS manages orchestration
 });
 ```
 
 **When to use:**
-- ✅ Production multi-tool workflows
-- ✅ Complex orchestration
-- ✅ Built-in memory/sessions
-- ✅ AWS-managed infrastructure
+- ✅ Infrastructure-as-code approach
+- ✅ Code-reviewed agent definitions
+- ✅ CI/CD pipeline integration
+- ✅ Built-in orchestration
 - ✅ Multiple action groups
+- ✅ Enterprise governance
 
-**[View Agent Core Example →](./examples/agent-core/)**
+**[View Bedrock Agents Example →](./examples/bedrock-agents/)**
+
+---
+
+### 4. [AgentCore Runtime](./examples/agent-core/) - **Advanced Pattern**
+
+New AgentCore service with containerized agents and full observability.
+
+```typescript
+// Runtime agent with ADOT instrumentation
+import { AgentCore } from '@aws/bedrock-agentcore-sdk-typescript';
+
+const agent = new AgentCore({
+  // Agent code runs in managed container
+  // Full ADOT observability
+  // Dynamic configuration at runtime
+});
+```
+
+**When to use:**
+- ✅ Advanced observability (ADOT/CloudWatch)
+- ✅ Containerized agent workflows
+- ✅ Runtime configuration changes
+- ✅ Complex trace analysis
+- ✅ Custom instrumentation
+- ✅ Multi-framework support
+
+**[View AgentCore Runtime Example →](./examples/agent-core/)**
 
 ---
 
 ## 📊 Pattern Comparison
 
-| Feature | Converse API | Inline Agents | Agent Core |
-|---------|--------------|---------------|------------|
-| **Complexity** | Low | Medium | High |
-| **First Token Latency** | 1-2s | 2-3s | 3-5s |
-| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $15-25 |
-| **Setup Time** | 5 min | 10 min | 15 min |
-| **Code to Write** | High | Medium | Low |
-| **Tool Calling** | Manual | Manual | Built-in |
-| **Multi-Agent** | Manual | Manual | Built-in |
-| **Session Management** | Manual | Manual | Built-in |
-| **Iteration Speed** | Fastest | Fast | Slow |
-| **Control Level** | Highest | High | Medium |
-| **AWS Management** | None | Minimal | Full |
+| Feature | Converse API | Inline Agents | Bedrock Agents | AgentCore Runtime |
+|---------|--------------|---------------|----------------|-------------------|
+| **Complexity** | Low | Medium | High | Advanced |
+| **First Token Latency** | 1-2s | 2-3s | 3-5s | 3-5s |
+| **Monthly Cost (1K convos)*** | $6-8 | $7-9 | $15-25 | $20-35 |
+| **Setup Time** | 5 min | 10 min | 15 min | 20 min |
+| **Code to Write** | High | Medium | Low | Medium |
+| **Tool Calling** | Manual | Manual | Built-in | Built-in |
+| **Multi-Agent** | Manual | Manual | Built-in | Built-in |
+| **Session Management** | Manual | Manual | Built-in | Built-in |
+| **Iteration Speed** | Fastest | Fast | Slow | Medium |
+| **Control Level** | Highest | High | Medium | High |
+| **AWS Management** | None | Minimal | Full | Full |
+| **Observability** | Basic | Basic | CloudWatch Metrics | Full ADOT/Traces |
+| **Deployment Type** | Lambda | Lambda | CDK Infrastructure | Container Runtime |
+| **Config Changes** | Instant | Instant | Requires Redeploy | Runtime |
 
 **\* Cost estimates:** Actual costs depend heavily on conversation length, tool usage, and session frequency. 
 
 **Cost Breakdown by Pattern:**
 - **Converse API & Inline Agents**: Pay only for LLM tokens + minimal Lambda costs (~$0.20/1M requests)
-- **Agent Core**: Pay for LLM tokens **+ Runtime compute** (CPU: $0.0895/vCPU-hour, Memory: $0.00945/GB-hour) **+ Gateway APIs** (if using tools). Runtime charges apply for entire session duration, making Agent Core 2-3x more expensive for equivalent conversations.
+- **Bedrock Agents**: Pay for LLM tokens **+ Runtime compute** (CPU: $0.0895/vCPU-hour, Memory: $0.00945/GB-hour). Runtime charges apply for entire session duration, making it 2-3x more expensive than Converse/Inline patterns.
+- **AgentCore Runtime**: Pay for LLM tokens **+ Container runtime** + ADOT ingestion costs. Most expensive but offers full observability and flexibility.
 
 **Cost Tracking:**
 - **Converse API & Inline Agents**: Real-time token usage displayed in the UI
-- **Agent Core**: Token usage available via [CloudWatch Metrics](./examples/agent-core/README.md#tracking-actual-usage) (5-15 min delay)
+- **Bedrock Agents**: Token usage available via [CloudWatch Metrics](./examples/bedrock-agents/README.md#tracking-actual-usage) (5-15 min delay)
+- **AgentCore Runtime**: Full ADOT traces, spans, and metrics with CloudWatch Application Signals
 
 ## 🏗️ Architecture Overview
 
@@ -165,11 +200,13 @@ shared/
 
 3. **Choose your example**
    ```bash
-   cd examples/converse-api/     # Simplest
+   cd examples/converse-api/     # Simplest - Direct API calls
    # OR
-   cd examples/inline-agents/    # Medium complexity
+   cd examples/inline-agents/    # Medium - Custom tool orchestration
    # OR
-   cd examples/agent-core/       # Full featured
+   cd examples/bedrock-agents/   # High - Infrastructure-based agents
+   # OR
+   cd examples/agent-core/       # Advanced - AgentCore Runtime with ADOT
    ```
 
 4. **Deploy**
@@ -207,8 +244,11 @@ wscat -c "wss://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod?token=YOUR_
 # Send message (Inline Agents)
 > {"action": "chat", "message": "Calculate 25 * 4"}
 
-# Send message (Agent Core)
+# Send message (Bedrock Agents)
 > {"action": "invoke-agent", "message": "Fetch https://aws.amazon.com/bedrock"}
+
+# Send message (AgentCore Runtime)
+> {"action": "invoke-runtime", "message": "Your message with full observability"}
 ```
 
 ### With Frontend (React)
@@ -227,7 +267,7 @@ ws.onmessage = (event) => {
 };
 
 ws.send(JSON.stringify({ 
-  action: 'chat',  // or 'invoke-agent' for agent-core
+  action: 'chat',  // 'invoke-agent' for bedrock-agents, 'invoke-runtime' for agent-core
   message: 'Your message here' 
 }));
 ```
@@ -238,7 +278,8 @@ Each example has comprehensive documentation:
 
 - **[Converse API README](./examples/converse-api/README.md)** - Direct API usage
 - **[Inline Agents README](./examples/inline-agents/README.md)** - Tool calling pattern
-- **[Agent Core README](./examples/agent-core/README.md)** - Full agent service
+- **[Bedrock Agents README](./examples/bedrock-agents/README.md)** - Infrastructure-based agents
+- **[AgentCore Runtime README](./examples/agent-core/README.md)** - Advanced runtime with ADOT observability
 
 ## 🎓 Learning Path
 
@@ -254,31 +295,43 @@ Each example has comprehensive documentation:
    - Implement custom logic
    - Control orchestration
 
-3. **Graduate to [Agent Core](./examples/agent-core/)**
-   - Use managed agent service
-   - Multiple action groups
-   - Production workflows
+3. **Try [Bedrock Agents](./examples/bedrock-agents/)**
+   - Infrastructure-as-code approach
+   - Built-in orchestration
+   - Enterprise governance
+
+4. **Graduate to [AgentCore Runtime](./examples/agent-core/)**
+   - Advanced observability
+   - Container-based workflows
+   - Full ADOT instrumentation
 
 ## 💰 Cost Breakdown
 
 **Example: 1,000 conversations, avg 1,000 tokens each, 60-second sessions**
 
-| Component | Converse | Inline | Agent Core |
-|-----------|----------|--------|------------|
-| Bedrock LLM (tokens) | $5-7 | $6-8 | $8-10 |
-| Runtime Compute (CPU+Memory) | — | — | $7-15* |
-| Lambda | $0.10 | $0.20 | $0.20 |
-| API Gateway | $0.03 | $0.03 | $0.03 |
-| Logs | $0.50 | $0.50 | $0.50 |
-| **Total** | **$6-8** | **$7-9** | **$15-25** |
+| Component | Converse | Inline | Bedrock Agents | AgentCore Runtime |
+|-----------|----------|--------|----------------|-------------------|
+| Bedrock LLM (tokens) | $5-7 | $6-8 | $8-10 | $8-10 |
+| Runtime Compute (CPU+Memory) | — | — | $7-15* | $10-20** |
+| ADOT/Observability | — | — | — | $2-5 |
+| Lambda | $0.10 | $0.20 | $0.20 | $0.20 |
+| API Gateway | $0.03 | $0.03 | $0.03 | $0.03 |
+| Logs | $0.50 | $0.50 | $0.50 | $0.50 |
+| **Total** | **$6-8** | **$7-9** | **$15-25** | **$20-35** |
 
-**\* Agent Core Runtime charges:**
+**\* Bedrock Agents Runtime charges:**
 - CPU: $0.0895/vCPU-hour (charged per second of active processing)
 - Memory: $0.00945/GB-hour (charged continuously during session)
 - Example: 60s session with 1vCPU, 2GB memory ≈ $0.015/session
 - 1,000 sessions ≈ $15 in runtime costs alone
 
-💡 **Tip:** Start with Converse API for lowest cost while learning. Use Agent Core only when you need built-in orchestration, session management, or multi-agent workflows that justify the 2-3x cost premium.
+**\*\* AgentCore Runtime charges:**
+- Container runtime costs (higher than traditional agents)
+- ADOT span ingestion via CloudWatch Application Signals
+- Additional observability storage costs
+- Full tracing and metrics collection
+
+💡 **Tip:** Start with Converse API for lowest cost while learning. Use Inline Agents for production with tools. Choose Bedrock Agents when you need infrastructure-as-code governance. Use AgentCore Runtime only when advanced observability justifies the 3-5x cost premium.
 
 ## 🔐 Security
 
@@ -306,9 +359,10 @@ This repository is designed for learning and reference. Feel free to:
 ```
 agent-core-stack/
 ├── examples/
-│   ├── converse-api/      # Simplest: Direct API calls
-│   ├── inline-agents/     # Medium: Tool calling in Lambda
-│   └── agent-core/        # Advanced: Full Bedrock Agent
+│   ├── converse-api/      # Level 1: Direct API calls (simplest)
+│   ├── inline-agents/     # Level 2: Tool calling in Lambda
+│   ├── bedrock-agents/    # Level 3: Infrastructure-based agents (CDK)
+│   └── agent-core/        # Level 4: AgentCore Runtime (advanced observability)
 ├── shared/
 │   ├── auth/              # Firebase authorizer
 │   ├── websocket/         # WebSocket utilities
@@ -379,20 +433,23 @@ Built with:
 
 - 🟢 **Simple chat** → [Converse API](./examples/converse-api/)
 - 🟡 **Tools/functions** → [Inline Agents](./examples/inline-agents/)
-- 🔴 **Production agent** → [Agent Core](./examples/agent-core/)
+- 🟠 **Infrastructure agents** → [Bedrock Agents](./examples/bedrock-agents/)
+- 🔴 **Advanced observability** → [AgentCore Runtime](./examples/agent-core/)
 
 **"I want..."**
 
 - ⚡ **Fastest setup** → [Converse API](./examples/converse-api/) (5 min)
 - 💰 **Lowest cost** → [Converse API](./examples/converse-api/) ($6-8/mo)
 - 🎯 **Most control** → [Inline Agents](./examples/inline-agents/)
-- 🏢 **AWS managed** → [Agent Core](./examples/agent-core/)
+- 🏗️ **Infrastructure-as-code** → [Bedrock Agents](./examples/bedrock-agents/)
+- 🔬 **Full observability** → [AgentCore Runtime](./examples/agent-core/)
 
 **"I'm learning..."**
 
 - 📖 **Bedrock basics** → Start with [Converse API](./examples/converse-api/)
 - 🛠️ **Tool calling** → Move to [Inline Agents](./examples/inline-agents/)
-- 🤖 **Full agents** → Graduate to [Agent Core](./examples/agent-core/)
+- 🏢 **Managed agents** → Try [Bedrock Agents](./examples/bedrock-agents/)
+- 🚀 **Advanced patterns** → Graduate to [AgentCore Runtime](./examples/agent-core/)
 
 ---
 

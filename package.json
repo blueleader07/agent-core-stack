@@ -1,7 +1,7 @@
 {
   "name": "bedrock-integration-examples",
   "version": "2.0.0",
-  "description": "AWS Bedrock integration examples - Converse API, Inline Agents, and Agent Core patterns",
+  "description": "AWS Bedrock integration examples - Converse API, Inline Agents, Bedrock Agents, and AgentCore Runtime patterns",
   "repository": {
     "type": "git",
     "url": "https://github.com/blueleader07/agent-core-stack"
@@ -12,19 +12,23 @@
     "claude",
     "ai",
     "agents",
+    "agentcore",
     "serverless",
     "websocket",
-    "lambda"
+    "lambda",
+    "observability",
+    "adot"
   ],
   "author": "blueleader07",
   "license": "MIT",
   "scripts": {
-    "install:all": "cd examples/converse-api && npm install && cd ../inline-agents && npm install && cd ../agent-core && npm install && cd ../../shared && npm install",
-    "build:all": "cd examples/converse-api && npm run build && cd ../inline-agents && npm run build && cd ../agent-core && npm run build",
+    "install:all": "cd examples/converse-api && npm install && cd ../inline-agents && npm install && cd ../bedrock-agents && npm install && cd ../agent-core && npm install && cd ../../shared && npm install",
+    "build:all": "cd examples/converse-api && npm run build && cd ../inline-agents && npm run build && cd ../bedrock-agents && npm run build && cd ../agent-core && npm run build",
     "deploy:converse": "cd examples/converse-api && npm run deploy",
     "deploy:inline": "cd examples/inline-agents && npm run deploy",
-    "deploy:agent": "cd examples/agent-core && npm run deploy",
-    "deploy:all": "npm run deploy:converse && npm run deploy:inline && npm run deploy:agent"
+    "deploy:bedrock": "cd examples/bedrock-agents && npm run deploy",
+    "deploy:agentcore": "cd examples/agent-core && npm run deploy",
+    "deploy:all": "npm run deploy:converse && npm run deploy:inline && npm run deploy:bedrock && npm run deploy:agentcore"
   },
   "engines": {
     "node": ">=20.0.0"

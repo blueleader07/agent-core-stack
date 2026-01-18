@@ -1,30 +1,27 @@
-# Bedrock Agent Core Example
+# AgentCore Runtime Example
 
-Full AWS Bedrock Agent implementation with action groups, WebSocket streaming, and Firebase authentication.
+**Advanced containerized agents with TypeScript SDK and ADOT observability**
 
 ## What is This?
 
-This example demonstrates a **production-ready Bedrock Agent** using AWS's managed agent service. The agent has:
-- 🤖 **Claude Sonnet 4.5** as the foundation model
-- 🔧 **Action Groups** for custom tool integrations (URL fetcher)
-- 🔐 **Firebase Authentication** for secure access
-- ⚡ **WebSocket Streaming** for real-time responses
-- 📊 **Built-in memory** and session management
+This example demonstrates **AgentCore Runtime** - AWS's newest agent deployment pattern using containerized Lambda execution with the official TypeScript SDK. Unlike traditional Bedrock Agents (infrastructure-as-code), AgentCore Runtime provides:
 
-## When to Use This Pattern
+- 🚀 **Runtime Configuration** - No CDK infrastructure for agent logic changes
+- 🔧 **TypeScript SDK** - Direct programmatic control with `@aws/bedrock-agentcore-sdk-typescript`
+- 📊 **ADOT Observability** - Built-in OpenTelemetry tracing and CloudWatch Application Signals
+- 🛠️ **Rich Tool Ecosystem** - Code Interpreter, Browser, and custom tools via Vercel AI SDK
+- ⚡ **Streaming Support** - Real-time responses via WebSocket
 
-✅ **Use Bedrock Agent Core when you need:**
-- Multi-step reasoning and orchestration
-- Built-in session and memory management
-- Multiple action groups/tools working together
-- Production-ready agent infrastructure
-- AWS-managed agent lifecycle
+## What Makes This Different?
 
-❌ **Don't use if you need:**
-- Rapid iteration on agent logic (use inline-agents)
-- Lowest possible latency (use converse-api)
-- Fine-grained control over prompts (use inline-agents or converse-api)
-- Cost optimization for simple use cases (use converse-api)
+| Feature | Traditional Bedrock Agents | **AgentCore Runtime** |
+|---------|----------------------------|----------------------|
+| Agent Logic | CfnAgent infrastructure | TypeScript code with SDK |
+| Tool Definition | OpenAPI schemas in CDK | Vercel AI SDK tools |
+| Deployment Changes | CDK deploy required | Code deploy only |
+| Observability | CloudWatch Metrics (delayed) | ADOT + Application Signals (real-time) |
+| Development Speed | Slower (infrastructure changes) | Faster (code changes) |
+| Control Level | AWS-managed orchestration | Full programmatic control |
 
 ## Architecture
 
@@ -41,45 +38,81 @@ This example demonstrates a **production-ready Bedrock Agent** using AWS's manag
 └────────┬────────┘      │ (Firebase)       │
          │               └──────────────────┘
          ↓
-┌─────────────────┐      ┌──────────────────┐
-│ WebSocket       │─────→│ Bedrock Agent    │
-│ Lambda Handler  │      │ Service          │
-└─────────────────┘      └────────┬─────────┘
-                                  │
-                         ┌────────┴─────────┐
-                         │                  │
-                    ┌────▼────┐      ┌─────▼──────┐
-                    │ Claude  │      │ Action     │
-                    │ Sonnet  │      │ Group      │
-                    │ 4.5     │      │ Lambda     │
-                    └─────────┘      └────┬───────┘
-                                          │
-                                    ┌─────▼──────┐
-                                    │ URL        │
-                                    │ Fetcher    │
-                                    └────────────┘
+┌─────────────────────────────────────────┐
+│ AgentCore Runtime Lambda (Containerized) │
+│ ┌─────────────────────────────────────┐ │
+│ │ ToolLoopAgent (Vercel AI SDK v6)    │ │
+│ │  ├── Claude Sonnet 4.5              │ │
+│ │  ├── CodeInterpreter Tools          │ │
+│ │  └── Browser Tools                  │ │
+│ └─────────────────────────────────────┘ │
+│                                         │
+│ ADOT Layer (OpenTelemetry)              │
+│  ├── X-Ray Tracing                      │
+│  └── CloudWatch Application Signals     │
+└────────┬────────────────────────────────┘
+         │
+         ↓
+┌─────────────────────────────────────────┐
+│ AWS Bedrock AgentCore Services          │
+│  ├── Code Interpreter (secure sandbox)  │
+│  └── Browser (cloud web automation)     │
+└─────────────────────────────────────────┘
 ```
 
 ## Features
 
-- ✅ **Full Bedrock Agent** - Managed agent service with orchestration
-- ✅ **URL Fetcher Action Group** - Extract article content using Cheerio
+- ✅ **AgentCore TypeScript SDK** - Full programmatic control with `ToolLoopAgent`
+- ✅ **Code Interpreter** - Execute Python code in secure sandboxed environment
+- ✅ **Browser Automation** - Cloud-based web browsing and data extraction
 - ✅ **WebSocket Streaming** - Real-time response streaming (up to 15 minutes)
+- ✅ **ADOT Observability** - OpenTelemetry tracing + CloudWatch Application Signals
 - ✅ **Firebase Auth** - Secure JWT-based authentication
-- ✅ **Session Management** - Built-in conversation memory
-- ✅ **Claude Sonnet 4.5** - Latest Anthropic model via inference profile
+- ✅ **Claude Sonnet 4.5** - Latest Anthropic model via Bedrock
+
+## When to Use This Pattern
+
+✅ **Use AgentCore Runtime when you need:**
+- Real-time observability with ADOT and CloudWatch Application Signals
+- Rapid iteration without infrastructure redeployment
+- Full programmatic control over agent behavior
+- Advanced tools (Code Interpreter, Browser)
+- Container-based execution for complex dependencies
+- Production-grade observability and monitoring
+
+❌ **Don't use if you need:**
+- Simple request/response (use converse-api)
+- AWS-managed agent lifecycle (use bedrock-agents)
+- Lowest possible latency (use inline-agents)
+- Minimal AWS service dependencies (use inline-agents)
 
 ## Prerequisites
 
 1. **AWS Account** with Bedrock access
 2. **Bedrock Model Access** - Request access to Claude Sonnet 4.5
-3. **Firebase Project** - For authentication
-4. **Node.js 20+**
-5. **AWS CDK** - `npm install -g aws-cdk`
+3. **AgentCore Access** - Enable Code Interpreter and Browser in Bedrock
+4. **CloudWatch Application Signals** - Account-level setting enabled
+5. **Firebase Project** - For authentication
+6. **Node.js 20+**
+7. **AWS CDK** - `npm install -g aws-cdk`
 
 ## Setup
 
-### 1. Configure Firebase
+### 1. Enable CloudWatch Application Signals
+
+This is required for AgentCore observability:
+
+```bash
+# Enable Application Signals in your AWS account
+aws cloudwatch put-service-level-objective \
+  --service-level-objective-name agentcore-runtime \
+  --sli-config '{"MetricType":"ApplicationSignals"}' \
+  --region us-east-1
+```
+
+Or enable via AWS Console: **CloudWatch > Application Signals > Get Started**
+
+### 2. Configure Firebase
 
 Create a `.env` file in the **repository root** (not in this directory):
 
@@ -92,257 +125,324 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYourKeyHere\n-----END PRIVATE
 
 Get these credentials from: **Firebase Console > Project Settings > Service Accounts > Generate New Private Key**
 
-### 2. Install Dependencies
+### 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Build TypeScript
+### 4. Build TypeScript
 
 ```bash
 npm run build
 ```
 
-### 4. Bootstrap CDK (first time only)
-
-```bash
-npx cdk bootstrap
-```
-
-### 5. Deploy
+### 5. Deploy the Stack
 
 ```bash
 npm run deploy
 ```
 
-**Outputs:**
-- `WebSocketUrl` - wss://xxx.execute-api.us-east-1.amazonaws.com/prod
-- `BedrockAgentId` - Agent ID for reference
-- `BedrockAgentAliasId` - Agent alias ID
+This will:
+- Create AgentCore Runtime Lambda with ADOT layer
+- Set up WebSocket API for streaming
+- Configure IAM permissions for Bedrock AgentCore services
+- Enable OpenTelemetry tracing and Application Signals
+- Output the WebSocket URL
 
-## Usage
+## How It Works
 
-### Frontend Integration (React/TypeScript)
+### AgentCore Runtime Lambda
+
+The Lambda function uses the AgentCore TypeScript SDK:
 
 ```typescript
-import { auth } from './firebase';
+import { ToolLoopAgent } from 'ai';
+import { bedrock } from '@ai-sdk/amazon-bedrock';
+import { CodeInterpreterTools } from '@aws/bedrock-agentcore-sdk-typescript/code-interpreter/vercel-ai';
+import { BrowserTools } from '@aws/bedrock-agentcore-sdk-typescript/browser/vercel-ai';
 
-// Get Firebase ID token
-const token = await auth.currentUser?.getIdToken();
+// Initialize AgentCore tools
+const codeInterpreter = new CodeInterpreterTools({ region: 'us-east-1' });
+const browser = new BrowserTools({ region: 'us-east-1' });
 
-// Connect to WebSocket
-const ws = new WebSocket(`${WS_URL}?token=${token}`);
+// Create agent with full programmatic control
+const agent = new ToolLoopAgent({
+  model: bedrock('us.anthropic.claude-sonnet-4-20250514-v1:0'),
+  tools: {
+    ...codeInterpreter.tools,
+    ...browser.tools,
+  },
+  maxSteps: 15,
+});
 
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  
-  switch (data.type) {
-    case 'stream':
-      console.log('Agent chunk:', data.chunk);
-      break;
-    case 'complete':
-      console.log('Agent finished');
-      break;
-    case 'error':
-      console.error('Agent error:', data.error);
-      break;
-  }
-};
-
-// Send message to agent
-ws.send(JSON.stringify({ 
-  action: 'invoke-agent', 
-  message: 'Fetch and summarize https://example.com/article' 
-}));
+// Stream responses
+const result = await agent.stream({ prompt: userMessage });
 ```
 
-### Testing with wscat
+### ADOT Observability
+
+The stack automatically configures:
+
+1. **ADOT Lambda Layer** - AWS Distro for OpenTelemetry
+2. **Environment Variables**:
+   - `OTEL_SERVICE_NAME=agentcore-runtime`
+   - `OTEL_RESOURCE_ATTRIBUTES=service.namespace=bedrock-agents`
+   - `AWS_LAMBDA_EXEC_WRAPPER=/opt/otel-handler`
+3. **X-Ray Tracing** - Distributed tracing enabled
+4. **CloudWatch Application Signals** - Real-time metrics and traces
+
+### Tool Execution Flow
+
+```
+User sends message
+    ↓
+WebSocket receives
+    ↓
+AgentCore Lambda invokes ToolLoopAgent
+    ↓
+ToolLoopAgent analyzes prompt
+    ↓
+Executes tools as needed:
+    ├── executeCode (Python in sandbox)
+    ├── fileOperations (read/write files)
+    ├── runCommand (shell commands)
+    ├── navigate (browse web)
+    └── getText (extract content)
+    ↓
+Streams response chunks
+    ↓
+Returns final result with metadata
+```
+
+## Testing
+
+### Using the Web UI
+
+1. **Start the web UI** (from repository root):
+   ```bash
+   cd web-ui
+   npm run dev
+   ```
+
+2. **Open browser**: http://localhost:3000
+
+3. **Select "Agent Core" tab**
+
+4. **Send test message**:
+   ```
+   Visit https://example.com and tell me what you find
+   ```
+
+### Direct WebSocket Testing
 
 ```bash
-# Install wscat
-npm install -g wscat
-
-# Get Firebase token (from browser console after login)
-# In browser console: await firebase.auth().currentUser.getIdToken()
-
-# Connect
-wscat -c "wss://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod?token=YOUR_TOKEN"
+# Get WebSocket URL from CDK output
+wscat -c "wss://your-websocket-url?token=your-firebase-jwt"
 
 # Send message
-> {"action": "invoke-agent", "message": "Tell me about quantum computing"}
-
-# Test URL fetcher
-> {"action": "invoke-agent", "message": "Fetch https://aws.amazon.com/bedrock"}
+{"action": "invoke-runtime", "message": "Calculate the fibonacci sequence up to 100"}
 ```
 
-## Project Structure
+### Example Prompts
 
+**Code Execution:**
 ```
-examples/agent-core/
-├── bin/
-│   └── agent-core.ts          # CDK app entry point
-├── lib/
-│   └── agent-core-stack.ts    # Main CDK stack
-├── lambda/
-│   ├── websocket-agent/       # WebSocket handler
-│   │   └── index.ts
-│   └── url-fetcher/           # Action group Lambda
-│       ├── index.ts
-│       └── package.json
-├── package.json
-├── cdk.json
-├── tsconfig.json
-└── README.md
+Write a Python function to analyze CSV data and calculate the mean, median, and mode
 ```
 
-## Stack Resources
-
-### Bedrock Agent
-- **Model**: `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (inference profile)
-- **Instructions**: Article reading and social media content generation
-- **Alias**: `production-v9`
-
-### Lambda Functions
-1. **FirebaseAuthorizer** - Validates Firebase JWT tokens (from shared)
-2. **WebSocketAgentFunction** - Handles WebSocket connections and streams responses
-3. **UrlFetcherFunction** - Action group for fetching article content
-
-### API Gateway
-- **Type**: WebSocket API
-- **Routes**: `$connect`, `$disconnect`, `$default`
-- **Authorizer**: Lambda authorizer (Firebase JWT in query string)
-
-## Cost Estimates
-
-**For 1,000 agent conversations (avg 1,000 tokens each):**
-
-| Service | Cost |
-|---------|------|
-| Bedrock Agent (Claude Sonnet 4.5) | ~$8-10 |
-| Lambda executions | ~$0.20 (within free tier) |
-| API Gateway WebSocket | ~$0.03 |
-| CloudWatch Logs | ~$0.50 |
-| **Total** | **~$9-11/month** |
-
-### Tracking Actual Usage
-
-**Note**: The Agent Core API doesn't expose token usage in real-time like the Converse API does. To view actual costs and token usage:
-
-#### Option 1: CloudWatch Metrics (Recommended)
-
-View token usage metrics in the AWS Console:
-
-1. Navigate to **CloudWatch > Metrics > All metrics**
-2. Select **AWS/Bedrock** namespace
-3. Choose **Agent** metrics
-4. Filter by your Agent ID: `1XMKPZ1AMR` (found in stack outputs)
-5. Select metrics:
-   - `InputTokens` - Tokens sent to the model
-   - `OutputTokens` - Tokens generated by the model
-   - `Invocations` - Number of agent invocations
-
-**Via AWS CLI:**
-```bash
-# Get Agent ID from stack outputs
-aws cloudformation describe-stacks \
-  --stack-name BedrockAgentCoreStack \
-  --query 'Stacks[0].Outputs[?OutputKey==`BedrockAgentId`].OutputValue' \
-  --output text
-
-# View metrics for the last hour
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/Bedrock \
-  --metric-name InputTokens \
-  --dimensions Name=AgentId,Value=1XMKPZ1AMR \
-  --start-time $(date -u -v-1H +%Y-%m-%dT%H:%M:%S) \
-  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
-  --period 3600 \
-  --statistics Sum
-
-# Calculate cost
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/Bedrock \
-  --metric-name OutputTokens \
-  --dimensions Name=AgentId,Value=1XMKPZ1AMR \
-  --start-time $(date -u -v-1H +%Y-%m-%dT%H:%M:%S) \
-  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
-  --period 3600 \
-  --statistics Sum
+**Web Browsing:**
+```
+Go to news.ycombinator.com and summarize the top 3 stories
 ```
 
-**Cost Calculation:**
-- Input tokens: `$3 per million` ($0.000003 per token)
-- Output tokens: `$15 per million` ($0.000015 per token)
-- Example: 1000 input + 500 output = (1000 × $0.000003) + (500 × $0.000015) = **$0.0105**
+**Combined Tools:**
+```
+Visit wikipedia.org/wiki/Python_(programming_language), 
+extract the history section, and create a timeline chart using matplotlib
+```
 
-#### Option 2: AWS Cost Explorer
+## Observability Dashboard
 
-1. Go to **AWS Billing > Cost Explorer**
-2. Filter by service: **Amazon Bedrock**
-3. Group by: **Usage Type**
-4. Look for entries containing your Agent ID
+### Viewing Traces
 
-**Note**: Metrics may take 5-15 minutes to appear after agent usage.
+1. **AWS Console > CloudWatch > Application Signals**
+2. Select **Service: agentcore-runtime**
+3. View:
+   - Request traces
+   - Latency metrics
+   - Error rates
+   - Tool execution timing
 
-## Performance
+### X-Ray Service Map
 
-- **First token latency**: 3-5 seconds
-- **Streaming**: Real-time chunks
-- **Max session**: 15 minutes (WebSocket limit)
-- **Concurrency**: Default Lambda limit (1,000 concurrent)
+**AWS Console > X-Ray > Service Map**
+
+Shows:
+- AgentCore Lambda
+- Bedrock model invocations
+- Code Interpreter sessions
+- Browser sessions
+- Downstream dependencies
+
+### Custom Metrics
+
+The handler logs:
+- Input/output tokens
+- Tool execution count
+- Response streaming time
+- Session management
+
+## Cost Considerations
+
+AgentCore Runtime has different pricing than traditional Bedrock Agents:
+
+| Component | Pricing |
+|-----------|---------|
+| **Claude Tokens** | $3/M input, $15/M output |
+| **Lambda Execution** | $0.0000166667/GB-second |
+| **Code Interpreter** | Per session + compute time |
+| **Browser** | Per session + page loads |
+| **ADOT Ingestion** | CloudWatch Logs pricing |
+| **X-Ray Traces** | $5 per million traces |
+
+**Estimated cost for 1,000 conversations:**
+- Tokens: ~$5-10
+- Lambda: ~$2-5
+- AgentCore services: ~$10-15
+- Observability: ~$3-5
+- **Total: ~$20-35**
+
+Higher than simple patterns but includes enterprise observability.
+
+## Development Workflow
+
+### Making Changes
+
+1. **Update agent logic** in `lambda/agentcore-handler/index.ts`
+2. **Build**: `npm run build`
+3. **Deploy**: `npm run deploy`
+
+No CDK infrastructure changes needed for:
+- Changing prompts/instructions
+- Adding/removing tools
+- Modifying response handling
+- Updating streaming logic
+
+### Adding Custom Tools
+
+```typescript
+import { tool } from 'ai';
+import { z } from 'zod';
+
+const myCustomTool = tool({
+  description: 'Does something useful',
+  parameters: z.object({
+    input: z.string(),
+  }),
+  execute: async ({ input }) => {
+    // Your logic here
+    return { result: 'success' };
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: bedrock('...'),
+  tools: {
+    ...codeInterpreter.tools,
+    ...browser.tools,
+    myCustomTool,
+  },
+});
+```
 
 ## Troubleshooting
 
-### Agent not responding
+### "Application Signals not enabled"
 
-Check Lambda logs:
+Enable CloudWatch Application Signals:
 ```bash
-aws logs tail /aws/lambda/BedrockAgentCoreStack-WebSocketAgentFunction --follow
+aws cloudwatch put-service-level-objective \
+  --service-level-objective-name agentcore-runtime \
+  --sli-config '{"MetricType":"ApplicationSignals"}' \
+  --region us-east-1
 ```
 
-### Authorizer fails
+### "Code Interpreter session failed"
 
-Verify Firebase credentials in CloudWatch:
-```bash
-aws logs tail /aws/lambda/BedrockAgentCoreStack-FirebaseAuthorizer --since 5m
+Check IAM permissions:
+```typescript
+bedrock-agentcore:StartCodeInterpreterSession
+bedrock-agentcore:ExecuteCode
+bedrock-agentcore:StopCodeInterpreterSession
 ```
 
-### Model access denied
+### "No traces in X-Ray"
 
-Request access to Claude Sonnet 4.5:
+Verify ADOT layer is attached:
 ```bash
-aws bedrock list-foundation-models --region us-east-1 --query 'modelSummaries[?contains(modelId, `claude-sonnet-4-5`)]'
+aws lambda get-function --function-name <your-function-name> \
+  --query 'Configuration.Layers'
 ```
 
-Go to: **AWS Console > Bedrock > Model access** and request access.
+### High latency
 
-### URL fetcher fails
+- Code Interpreter sessions have cold start (~3-5s)
+- Browser sessions need page load time
+- Consider connection pooling for production
 
-Check action group Lambda logs:
-```bash
-aws logs tail /aws/lambda/BedrockAgentCoreStack-UrlFetcherFunction --follow
+## Advanced Configuration
+
+### Custom ADOT Sampling
+
+Update `lambda/agentcore-handler/adot-config.ts`:
+
+```typescript
+export const adotConfig = {
+  tracingEnabled: true,
+  samplingRate: 0.1, // Sample 10% of requests
+  captureHTTPRequests: true,
+};
+```
+
+### Session Management
+
+AgentCore tools maintain sessions automatically:
+
+```typescript
+// Sessions auto-start on first use
+await agent.stream({ prompt: 'Execute Python code' });
+
+// Cleanup on disconnect
+await codeInterpreter.stopSession();
+await browser.stopSession();
 ```
 
 ## Comparison with Other Patterns
 
-| Feature | Agent Core | Inline Agents | Converse API |
-|---------|-----------|---------------|--------------|
-| Complexity | High | Medium | Low |
-| Latency | 3-5s | 2-3s | 1-2s |
-| Cost | Medium | Low | Lowest |
-| Flexibility | Medium | High | Highest |
-| Setup Time | 15 min | 10 min | 5 min |
-| Best For | Production multi-tool workflows | Custom agent logic | Simple chat/Q&A |
+| Aspect | Converse API | Inline Agents | Bedrock Agents | **AgentCore Runtime** |
+|--------|--------------|---------------|----------------|----------------------|
+| Complexity | ⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Control | High | High | Medium | **Highest** |
+| Observability | Basic | Basic | Delayed | **Real-time (ADOT)** |
+| Tool Ecosystem | None | Custom | Action Groups | **SDK Tools** |
+| Deployment Speed | Fast | Fast | Slow | **Fast (code only)** |
+| Infrastructure | Minimal | Minimal | Heavy (CfnAgent) | **Minimal (Lambda)** |
+| Cost (1K convos) | $6-8 | $7-9 | $15-25 | **$20-35** |
+
+## Learn More
+
+- **AgentCore TypeScript SDK**: https://github.com/aws/bedrock-agentcore-sdk-typescript
+- **Vercel AI SDK**: https://sdk.vercel.ai/docs
+- **ADOT for Lambda**: https://aws-otel.github.io/docs/getting-started/lambda
+- **CloudWatch Application Signals**: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Signals.html
 
 ## Next Steps
 
-- Explore **inline-agents** example for faster iteration
-- Explore **converse-api** example for simplest implementation
-- Add more action groups (database, APIs, etc.)
-- Implement DynamoDB for persistent session storage
-- Add CloudWatch metrics and alarms
-
-## License
-
-MIT
+1. ✅ Deploy this example
+2. ✅ Test with web UI
+3. ✅ View traces in CloudWatch Application Signals
+4. ✅ Try Code Interpreter and Browser tools
+5. ✅ Add custom tools for your use case
+6. ✅ Monitor costs and observability metrics
+7. ✅ Compare with other patterns (bedrock-agents, inline-agents)
