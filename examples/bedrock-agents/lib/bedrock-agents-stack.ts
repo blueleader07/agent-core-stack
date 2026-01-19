@@ -33,7 +33,7 @@ export class BedrockAgentsStack extends cdk.Stack {
 
     // Lambda function for URL fetching Action Group  
     const urlFetcherFunction = new NodejsFunction(this, 'UrlFetcherFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../lambda/url-fetcher/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(30),
@@ -165,7 +165,7 @@ Be conversational, insightful, and helpful.`,
 
     // Agent Lambda
     const wsAgentFunction = new lambda.Function(this, 'WebSocketAgentFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/websocket-agent')),
       timeout: cdk.Duration.minutes(15),

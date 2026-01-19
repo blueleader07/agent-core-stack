@@ -22,7 +22,7 @@ export class InlineAgentsStack extends cdk.Stack {
 
     // Inline Agent Lambda with Bedrock Converse API
     const inlineAgentFunction = new NodejsFunction(this, 'InlineAgentFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../lambda/inline-agent/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(15),

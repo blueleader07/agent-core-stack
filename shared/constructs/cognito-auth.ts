@@ -140,7 +140,7 @@ export class CognitoAuth extends Construct {
 
     // Lambda Authorizer
     this.authorizerFunction = new lambda.Function(this, 'AuthorizerFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../auth/cognito-authorizer')),
       timeout: cdk.Duration.seconds(10),

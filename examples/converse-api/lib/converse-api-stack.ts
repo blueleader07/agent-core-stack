@@ -22,7 +22,7 @@ export class ConverseApiStack extends cdk.Stack {
 
     // Converse API Lambda
     const converseFunction = new NodejsFunction(this, 'ConverseFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../lambda/converse/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(15),

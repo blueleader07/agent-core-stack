@@ -22,7 +22,7 @@ export class AgentCoreStack extends cdk.Stack {
 
     // AgentCore Runtime Lambda (containerized approach with ADOT)
     const agentCoreFunction = new NodejsFunction(this, 'AgentCoreRuntimeFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../lambda/agentcore-handler/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(15),

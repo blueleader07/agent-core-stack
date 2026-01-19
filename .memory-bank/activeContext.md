@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Focus
-**AgentCore Runtime integration complete** - 5 working Bedrock integration patterns operational
+**AgentCore Runtime integration complete** - 5 working Bedrock integration patterns operational across multiple deployment models
 
 ## Recent Accomplishments (Jan 18, 2026)
 
@@ -48,6 +48,9 @@
 
 ### Critical Learnings
 - **Workload Identity**: AgentCore containers MUST have `bedrock-agentcore:GetWorkloadAccessToken*` permissions to authenticate with Bedrock
+- **Memory Bank Pattern**: Use .memory-bank directory to maintain project context across sessions
+- **Test-Driven Development**: All code must be written test-first following TDD principles
+- **TypeScript Strict Mode**: Always enabled, no `any` types or type assertions allowed
 - **SDK Response Format**: AWS SDK returns data in `response.response` field, not `response.body`
 - **Token Metadata**: LangChain stores usage in `usage_metadata` field on AIMessage, not `response_metadata.usage`
 - **Web UI Format**: Token usage must be flat `{inputTokens, outputTokens, totalTokens}`, not nested under `usage`

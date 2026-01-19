@@ -46,7 +46,7 @@ export class AgentCoreProxyStack extends cdk.Stack {
     // ==========================================================================
     
     const proxyFunction = new NodejsFunction(this, 'AgentCoreProxyFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../lambda/agentcore-handler/index-proxy.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(15),

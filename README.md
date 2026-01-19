@@ -203,7 +203,7 @@ shared/
 1. **AWS Account** with Bedrock access
 2. **Bedrock Model Access** - Request Claude Sonnet 4.5 in AWS Console
 3. **Firebase Project** - Create at [console.firebase.google.com](https://console.firebase.google.com)
-4. **Node.js 20+** - [Download](https://nodejs.org/)
+4. **Node.js 22+** - [Download](https://nodejs.org/)
 5. **AWS CDK** - `npm install -g aws-cdk`
 
 ### Quick Setup (Any Example)
@@ -296,6 +296,134 @@ ws.send(JSON.stringify({
   message: 'Your message here' 
 }));
 ```
+
+## 🔍 Enabling AgentCore Observability
+
+**AgentCore Runtime provides automatic observability** - but it requires a **one-time account-level setup** to enable CloudWatch Transaction Search.
+
+### Prerequisites
+
+You must enable Transaction Search in your AWS account before AgentCore metrics will appear in the dashboard.
+
+### Setup Steps (One-Time Only)
+
+**Option 1: AWS CLI (Recommended)**
+
+```bash
+# Step 1: Create CloudWatch Logs resource policy
+aws logs put-resource-policy \
+  --policy-name TransactionSearchPolicy \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Sid": "TransactionSearchXRayAccess",
+      "Effect": "Allow",
+      "Principal": {"Service": "xray.amazonaws.com"},
+      "Action": "logs:PutLogEvents",
+      "Resource": [
+        "arn:aws:logs:us-east-1:YOUR_ACCOUNT_ID:log-group:aws/spans:*",
+        "arn:aws:logs:us-east-1:YOUR_ACCOUNT_ID:log-group:/aws/application-signals/data:*"
+      ],
+      "Condition": {
+        "ArnLike": {"aws:SourceArn": "arn:aws:xray:us-east-1:YOUR_ACCOUNT_ID:*"},
+        "StringEquals": {"aws:SourceAccount": "YOUR_ACCOUNT_ID"}
+      }
+    }]
+  }' \
+  --region us-east-1 \
+  --no-cli-pager
+
+# Step 2: Configure X-Ray to send traces to CloudWatch Logs
+aws xray update-trace-segment-destination \
+  --destination CloudWatchLogs \
+  --region us-east-1 \
+  --no-cli-pager
+
+# Step 3: Set sampling percentage (1% is free tier)
+aws xray update-indexing-rule \
+  --name "Default" \
+  --rule '{"Probabilistic": {"DesiredSamplingPercentage": 1}}' \
+  --region us-east-1 \
+  --no-cli-pager
+
+# Step 4: Enable Application Signals discovery (for observability dashboard)
+aws application-signals start-discovery \
+  --region us-east-1 \
+  --no-cli-pager
+
+# Step 5: Verify Transaction Search is active
+aws xray get-trace-segment-destination \
+  --region us-east-1 \
+  --no-cli-pager
+# Should return: {"Destination": "CloudWatchLogs", "Status": "ACTIVE"}
+```
+
+**Option 2: AWS Console**
+
+1. Open [CloudWatch Console](https://console.aws.amazon.com/cloudwatch/)
+2. Navigate to **Application Signals** → **Transaction Search**
+3. Click **Enable Transaction Search**
+4. Select **Ingest spans as structured logs**
+5. Set **1% indexing** (free tier)
+6. Click **Enable**
+7. Navigate to **Application Signals** → **Services**
+### What You Get (Automatically)
+
+Once enabled, **every AgentCore Runtime** in your account automatically sends:
+
+✅ **Runtime Metrics** (appears immediately)
+- Sessions count
+- Invocations count
+- Error rates
+- Throttle rates
+- vCPU consumption (vCPU-hours)
+- Memory consumption (GB-hours)
+
+✅ **Observability Metrics** (requires Application Signals discovery)
+- Agents/Endpoints tracking
+- Sampled trace analysis
+- Session-level details
+- LLM invocation traces
+- Tool execution traces
+
+✅ **CloudWatch Logs**
+- Application logs
+- Debug information
+- Error stack traces
+- Debug information
+- Error stack traces
+
+### Viewing Metrics
+
+After enabling Transaction Search and invoking your AgentCore Runtime:
+
+1. Open [Bedrock AgentCore Observability Dashboard](https://console.aws.amazon.com/cloudwatch/home#gen-ai-observability/agent-core)
+2. Wait **~10 minutes** for initial metrics to appear
+3. View real-time metrics, traces, and logs
+
+**No code changes needed** - observability is automatic for all deployed runtimes!
+
+### Troubleshooting
+
+**"I enabled Transaction Search but see 0/0 Agents"**
+- Wait 10 minutes after first runtime invocation
+- Verify Transaction Search status: `aws xray get-trace-segment-destination`
+- Check that you invoked the runtime at least once
+
+**"Metrics not appearing"**
+- Ensure your IAM user/role has `CloudWatchReadOnlyAccess` policy
+- Verify runtime is in `READY` state: `aws bedrock-agentcore-control get-agent-runtime`
+- Check CloudWatch Logs for errors: `/aws/bedrock-agentcore/runtimes/YOUR_RUNTIME_ID`
+
+### Cost
+
+- **Transaction Search**: Free for 1% sampling (default)
+- **CloudWatch Logs**: ~$0.50/GB ingested
+- **X-Ray Traces**: First 100K traces/month free, then $5.00/million
+
+For most development use cases, observability costs < $5/month.
+
+---
 
 ## 📖 Documentation
 
@@ -402,7 +530,7 @@ agent-core-stack/
 
 - **AWS CDK** - Infrastructure as Code
 - **AWS Bedrock** - Claude Sonnet 4.5
-- **AWS Lambda** - Serverless compute (Node.js 20)
+- **AWS Lambda** - Serverless compute (Node.js 22)
 - **API Gateway** - WebSocket API
 - **Firebase** - Authentication
 - **TypeScript** - Type-safe development
