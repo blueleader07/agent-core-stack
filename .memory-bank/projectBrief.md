@@ -22,7 +22,7 @@ AWS CDK TypeScript infrastructure project for deploying cloud resources to suppo
 
 ## Tech Stack
 - **Language**: TypeScript 5.2.2
-- **Infrastructure**: AWS CDK 2.149.0
+- **Infrastructure**: AWS CDK 2.1101.0 (CLI), 2.235.1 (lib)
 - **Cloud Provider**: AWS (us-east-1)
 - **Deployment**: CloudFormation via CDK CLI
 - **Version Control**: Git

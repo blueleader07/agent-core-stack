@@ -3,8 +3,8 @@
 ## Technology Stack
 
 ### Infrastructure
-- **AWS CDK**: 2.149.0
-- **AWS CDK Lib**: 2.149.0
+- **AWS CDK**: 2.1101.0
+- **AWS CDK Lib**: 2.235.1
 - **Constructs**: ^10.0.0
 - **dotenv**: 17.2.3 (environment variable management)
 
@@ -81,7 +81,7 @@
     "synth": "cdk synth"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.149.0",
+    "aws-cdk-lib": "2.235.1",
     "constructs": "^10.0.0",
     "dotenv": "^17.2.3"
   }
@@ -232,7 +232,7 @@ npm run cdk deploy
 ### Production Dependencies
 ```json
 {
-  "aws-cdk-lib": "2.149.0",
+  "aws-cdk-lib": "2.235.1",
   "constructs": "^10.0.0",
   "source-map-support": "^0.5.21"
 }
@@ -245,7 +245,7 @@ npm run cdk deploy
   "@types/node": "20.8.9",
   "jest": "^29.7.0",
   "ts-jest": "^29.1.1",
-  "aws-cdk": "2.149.0",
+  "aws-cdk": "2.1101.0",
   "ts-node": "^10.9.1",
   "typescript": "~5.2.2"
 }
