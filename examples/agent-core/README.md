@@ -98,9 +98,11 @@ This example demonstrates **AgentCore Runtime** - AWS's newest agent deployment 
 
 ## Setup
 
-### 1. Enable CloudWatch Application Signals
+### 1. Enable CloudWatch Observability
 
-This is required for AgentCore observability:
+**⚠️ CRITICAL: Both steps are required for AgentCore observability to work!**
+
+#### Step 1a: Enable Application Signals
 
 ```bash
 # Enable Application Signals in your AWS account
@@ -111,6 +113,46 @@ aws cloudwatch put-service-level-objective \
 ```
 
 Or enable via AWS Console: **CloudWatch > Application Signals > Get Started**
+
+#### Step 1b: Enable Transaction Search
+
+```bash
+# Enable Transaction Search for GenAI tracing
+aws cloudwatch put-transaction-search-configuration \
+  --transaction-search-configuration '{
+    "transactionSearchEnabled": true,
+    "cloudWatchLogsDestinationConfiguration": {
+      "enabled": true
+    },
+    "probabilisticSamplingConfiguration": {
+      "samplingPercentage": 1.0
+    }
+  }' \
+  --region us-east-1
+```
+
+Or enable via AWS Console: **CloudWatch > Settings > Transaction Search**
+
+#### Step 1c: Configure CloudWatch Log Delivery (REQUIRED!)
+
+**This is the non-intuitive part!** Even with Application Signals and Transaction Search enabled, AgentCore won't send traces/logs unless you configure CloudWatch Log Delivery resources. The CDK stack includes this automatically, but you need to understand what it does:
+
+The stack creates:
+- **DeliverySource** (APPLICATION_LOGS + TRACES) - Connects to your AgentCore Runtime
+- **DeliveryDestination** (CloudWatch Logs + X-Ray) - Where the data goes
+- **Delivery** - The connection between source and destination
+
+Without these resources, **your AgentCore dashboard will show 0/0 agents** even after hours of waiting!
+
+**Why this matters:**
+- Application Signals and Transaction Search are **account-level settings**
+- Log Delivery is **runtime-specific configuration**
+- You must configure **both** for observability to work
+- This is not documented clearly in AWS console - you'll just see empty dashboards
+
+The CDK stack in this example includes the complete Log Delivery configuration. See lines 201-297 in `lib/agentcore-runtime-stack.ts` for the implementation.
+
+**Reference**: Based on AWS example at https://github.com/awslabs/amazon-bedrock-agentcore-samples
 
 ### 2. Configure Firebase
 
@@ -264,6 +306,8 @@ extract the history section, and create a timeline chart using matplotlib
 
 ## Observability Dashboard
 
+**⏰ Note: After deployment and first invocations, allow 5-15 minutes for traces to appear in X-Ray and the GenAI Observability dashboard.** CloudWatch Logs appear immediately, but X-Ray trace propagation has a delay.
+
 ### Viewing Traces
 
 1. **AWS Console > CloudWatch > Application Signals**
@@ -273,6 +317,15 @@ extract the history section, and create a timeline chart using matplotlib
    - Latency metrics
    - Error rates
    - Tool execution timing
+
+**Verification Steps After Deployment:**
+1. Invoke your AgentCore Runtime a few times
+2. Check CloudWatch Logs immediately (should see logs right away):
+   ```bash
+   aws logs tail "/aws/vendedlogs/bedrock-agentcore/langgraph_agent_runtime-TEUJecAs2z" --since 1h --region us-east-1
+   ```
+3. Wait 5-15 minutes for X-Ray traces to propagate
+4. Check GenAI Observability dashboard - should show your runtime (not 0/0 agents)
 
 ### X-Ray Service Map
 
@@ -357,6 +410,71 @@ const agent = new ToolLoopAgent({
 ```
 
 ## Troubleshooting
+
+### "AgentCore Dashboard Shows 0/0 Agents" or "No X-Ray Traces After Hours"
+
+**Issue**: CloudWatch GenAI Observability dashboard shows 0/0 agents even though Application Signals and Transaction Search are enabled and you've invoked the runtime multiple times.
+
+**Root Cause**: Missing **CloudWatch Log Delivery** configuration. This is the most common issue and the least documented!
+
+**What's Happening**:
+1. ✅ Application Signals enabled (account-level setting)
+2. ✅ Transaction Search enabled (account-level setting)
+3. ❌ **Log Delivery NOT configured** (runtime-specific resources)
+
+**Why This Is Confusing**:
+- AWS Console doesn't show any errors
+- Runtime works perfectly (returns responses)
+- Account-level settings appear correct
+- No indication that Log Delivery is missing
+- You'll just wait hours seeing nothing in the dashboard
+
+**Solution**: The CDK stack in this example includes the complete Log Delivery configuration (lines 201-297 in `lib/agentcore-runtime-stack.ts`). It creates:
+
+```typescript
+// 1. Log Group for vended logs
+const logGroup = new logs.LogGroup(this, 'AgentRuntimeLogs', {
+  logGroupName: '/aws/vendedlogs/bedrock-agentcore/${RuntimeId}',
+});
+
+// 2. Delivery Source for APPLICATION_LOGS
+new CfnResource(this, 'LogsDeliverySource', {
+  type: 'AWS::Logs::DeliverySource',
+  properties: {
+    Name: '${RuntimeId}-logs-source',
+    LogType: 'APPLICATION_LOGS',
+    ResourceArn: agentCoreRuntime.getAtt('AgentRuntimeArn'),
+  },
+});
+
+// 3. Delivery Destination (CloudWatch Logs)
+new CfnResource(this, 'LogsDeliveryDestination', {
+  type: 'AWS::Logs::DeliveryDestination',
+  properties: {
+    Name: '${RuntimeId}-logs-destination',
+    DestinationResourceArn: logGroup.logGroupArn,
+  },
+});
+
+// 4. Delivery Connection
+new CfnResource(this, 'LogsDelivery', {
+  type: 'AWS::Logs::Delivery',
+  properties: {
+    DeliverySourceName: '${RuntimeId}-logs-source',
+    DeliveryDestinationArn: logsDeliveryDestination.getAtt('Arn'),
+  },
+});
+
+// Same pattern for TRACES → X-Ray
+```
+
+**After deploying with Log Delivery configured**:
+- GenAI Observability dashboard shows your agent
+- X-Ray traces appear in console
+- CloudWatch Logs show APPLICATION_LOGS
+- Everything works as expected
+
+**Reference**: This configuration pattern comes from https://github.com/awslabs/amazon-bedrock-agentcore-samples
 
 ### "Container returns 500 error" or "No response body"
 

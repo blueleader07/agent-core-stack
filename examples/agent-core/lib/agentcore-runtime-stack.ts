@@ -13,6 +13,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import { Construct } from 'constructs';
 import * as path from 'path';
@@ -197,6 +198,107 @@ export class AgentCoreRuntimeStack extends cdk.Stack {
 
     // Ensure runtime is created before endpoint
     agentCoreEndpoint.addDependency(agentCoreRuntime);
+
+    // ==========================================================================
+    // CloudWatch Observability - Log Delivery for Traces and Logs
+    // ==========================================================================
+    
+    // CloudWatch Log Group for application logs (vended logs)
+    // Note: Using cdk.Fn.sub to properly interpolate runtime ID token
+    const logGroup = new logs.LogGroup(this, 'AgentRuntimeLogs', {
+      logGroupName: cdk.Fn.sub(
+        '/aws/vendedlogs/bedrock-agentcore/${RuntimeId}',
+        { RuntimeId: agentCoreRuntime.getAtt('AgentRuntimeId').toString() }
+      ),
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+    logGroup.node.addDependency(agentCoreRuntime);
+
+    // Create name expressions that can be reused
+    const logsSourceName = cdk.Fn.sub(
+      '${RuntimeId}-logs-source',
+      { RuntimeId: agentCoreRuntime.getAtt('AgentRuntimeId').toString() }
+    );
+    const logsDestName = cdk.Fn.sub(
+      '${RuntimeId}-logs-destination',
+      { RuntimeId: agentCoreRuntime.getAtt('AgentRuntimeId').toString() }
+    );
+
+    // Log Delivery Source for APPLICATION_LOGS
+    const logsDeliverySource = new cdk.CfnResource(this, 'LogsDeliverySource', {
+      type: 'AWS::Logs::DeliverySource',
+      properties: {
+        Name: logsSourceName,
+        LogType: 'APPLICATION_LOGS',
+        ResourceArn: agentCoreRuntime.getAtt('AgentRuntimeArn'),
+      },
+    });
+    logsDeliverySource.addDependency(agentCoreRuntime);
+
+    // Log Delivery Destination for APPLICATION_LOGS (CloudWatch Logs)
+    const logsDeliveryDestination = new cdk.CfnResource(this, 'LogsDeliveryDestination', {
+      type: 'AWS::Logs::DeliveryDestination',
+      properties: {
+        Name: logsDestName,
+        DestinationResourceArn: logGroup.logGroupArn,
+      },
+    });
+    logsDeliveryDestination.addDependency(logGroup.node.defaultChild as cdk.CfnResource);
+
+    // Log Delivery Connection for APPLICATION_LOGS
+    // Must use the same name expressions, not getAtt which doesn't work for readonly properties
+    const logsDelivery = new cdk.CfnResource(this, 'LogsDelivery', {
+      type: 'AWS::Logs::Delivery',
+      properties: {
+        DeliverySourceName: logsSourceName,
+        DeliveryDestinationArn: logsDeliveryDestination.getAtt('Arn'),
+      },
+    });
+    logsDelivery.addDependency(logsDeliverySource);
+    logsDelivery.addDependency(logsDeliveryDestination);
+
+    // Create name expressions for traces that can be reused
+    const tracesSourceName = cdk.Fn.sub(
+      '${RuntimeId}-traces-source',
+      { RuntimeId: agentCoreRuntime.getAtt('AgentRuntimeId').toString() }
+    );
+    const tracesDestName = cdk.Fn.sub(
+      '${RuntimeId}-traces-destination',
+      { RuntimeId: agentCoreRuntime.getAtt('AgentRuntimeId').toString() }
+    );
+
+    // Log Delivery Source for TRACES (X-Ray)
+    const tracesDeliverySource = new cdk.CfnResource(this, 'TracesDeliverySource', {
+      type: 'AWS::Logs::DeliverySource',
+      properties: {
+        Name: tracesSourceName,
+        LogType: 'TRACES',
+        ResourceArn: agentCoreRuntime.getAtt('AgentRuntimeArn'),
+      },
+    });
+    tracesDeliverySource.addDependency(agentCoreRuntime);
+
+    // Log Delivery Destination for TRACES (X-Ray)
+    const tracesDeliveryDestination = new cdk.CfnResource(this, 'TracesDeliveryDestination', {
+      type: 'AWS::Logs::DeliveryDestination',
+      properties: {
+        Name: tracesDestName,
+        DeliveryDestinationType: 'XRAY',
+      },
+    });
+
+    // Log Delivery Connection for TRACES
+    // Must use the same name expressions, not getAtt which doesn't work for readonly properties
+    const tracesDelivery = new cdk.CfnResource(this, 'TracesDelivery', {
+      type: 'AWS::Logs::Delivery',
+      properties: {
+        DeliverySourceName: tracesSourceName,
+        DeliveryDestinationArn: tracesDeliveryDestination.getAtt('Arn'),
+      },
+    });
+    tracesDelivery.addDependency(tracesDeliverySource);
+    tracesDelivery.addDependency(tracesDeliveryDestination);
 
     // ==========================================================================
     // Outputs

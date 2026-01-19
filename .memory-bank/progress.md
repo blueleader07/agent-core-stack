@@ -131,6 +131,30 @@ agent-core-stack/
 
 ## Recent Updates
 
+### January 19, 2026 - AgentCore Observability Fixed
+- **CRITICAL FIX**: Resolved AgentCore observability showing 0/0 agents
+- **Root Cause**: Missing CloudWatch Log Delivery configuration
+  - Account-level settings (Application Signals, Transaction Search) were enabled
+  - Runtime-specific Log Delivery resources were missing
+  - This is the non-obvious part AWS doesn't document well
+- **Solution Implemented**:
+  - Added AWS::Logs::DeliverySource for APPLICATION_LOGS and TRACES
+  - Added AWS::Logs::DeliveryDestination for CloudWatch Logs and X-Ray
+  - Added AWS::Logs::Delivery connections
+  - Complete implementation in agentcore-runtime-stack.ts lines 201-297
+- **Verification**:
+  - CloudWatch Logs flowing immediately: `/aws/vendedlogs/bedrock-agentcore/langgraph_agent_runtime-TEUJecAs2z`
+  - Log Delivery resources confirmed via AWS CLI
+  - Trace IDs and span IDs appearing in structured logs
+  - X-Ray traces have 5-15 minute propagation delay (normal)
+- **Documentation Updated**:
+  - README.md expanded with comprehensive observability troubleshooting
+  - Detailed explanation of the 3-part observability setup
+  - Warning about 5-15 minute delay for X-Ray traces
+  - Reference to AWS example repository
+- **CDK Bootstrap**: Upgraded from version 21 to 30+ during deployment
+- **Multiple Deployment Attempts**: Fixed property naming, readonly attribute issues, case sensitivity
+
 ### January 11, 2026
 - **PRODUCTION DEPLOYED**: Full hybrid Firebase + AWS architecture
 - **Bedrock Agent**: Created with Claude Sonnet 4.5
