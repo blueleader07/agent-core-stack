@@ -65,5 +65,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Use dumb-init as PID 1 for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the AgentCore server
-CMD ["node", "dist/server.js"]
+# Start the AgentCore server with OpenTelemetry instrumentation
+# This enables automatic tracing and metrics collection for AgentCore observability
+CMD ["node", "--require", "./dist/tracing.js", "dist/server.js"]

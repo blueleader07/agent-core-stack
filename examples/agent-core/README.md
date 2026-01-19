@@ -100,9 +100,11 @@ This example demonstrates **AgentCore Runtime** - AWS's newest agent deployment 
 
 ### 1. Enable CloudWatch Observability
 
-**⚠️ CRITICAL: Both steps are required for AgentCore observability to work!**
+**⚠️ CRITICAL: THREE-PART SETUP REQUIRED for AgentCore observability to work!**
 
-#### Step 1a: Enable Application Signals
+AgentCore observability requires both **account-level configuration** AND **container code instrumentation**. Missing either part will result in an empty dashboard showing 0/0 agents.
+
+#### Step 1a: Enable Application Signals (Account-Level)
 
 ```bash
 # Enable Application Signals in your AWS account
@@ -114,7 +116,7 @@ aws cloudwatch put-service-level-objective \
 
 Or enable via AWS Console: **CloudWatch > Application Signals > Get Started**
 
-#### Step 1b: Enable Transaction Search
+#### Step 1b: Enable Transaction Search (Account-Level)
 
 ```bash
 # Enable Transaction Search for GenAI tracing
@@ -133,7 +135,7 @@ aws cloudwatch put-transaction-search-configuration \
 
 Or enable via AWS Console: **CloudWatch > Settings > Transaction Search**
 
-#### Step 1c: Configure CloudWatch Log Delivery (REQUIRED!)
+#### Step 1c: Configure CloudWatch Log Delivery (Infrastructure)
 
 **This is the non-intuitive part!** Even with Application Signals and Transaction Search enabled, AgentCore won't send traces/logs unless you configure CloudWatch Log Delivery resources. The CDK stack includes this automatically, but you need to understand what it does:
 
@@ -152,7 +154,84 @@ Without these resources, **your AgentCore dashboard will show 0/0 agents** even 
 
 The CDK stack in this example includes the complete Log Delivery configuration. See lines 201-297 in `lib/agentcore-runtime-stack.ts` for the implementation.
 
-**Reference**: Based on AWS example at https://github.com/awslabs/amazon-bedrock-agentcore-samples
+#### Step 1d: Add ADOT SDK to Container Code (REQUIRED!)
+
+**⚠️ THIS IS THE CRITICAL MISSING PIECE THAT'S NOT OBVIOUS!**
+
+Even with all infrastructure configured, **you must instrument your container code with the OpenTelemetry SDK**. Without this, your agent will never generate traces, and the GenAI Observability dashboard will remain empty.
+
+**What you need:**
+
+1. **Install OpenTelemetry packages** (already included in this example):
+   ```bash
+   npm install @opentelemetry/api \
+               @opentelemetry/sdk-node \
+               @opentelemetry/auto-instrumentations-node \
+               @opentelemetry/exporter-trace-otlp-http \
+               @opentelemetry/instrumentation \
+               @opentelemetry/sdk-trace-base
+   ```
+
+2. **Create a tracing initialization module** (`container/tracing.ts`):
+   ```typescript
+   import { NodeSDK } from '@opentelemetry/sdk-node';
+   import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+   import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+   import { Resource } from '@opentelemetry/resources';
+   import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+
+   const serviceName = process.env.OTEL_SERVICE_NAME || 'agentcore-runtime';
+   const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318';
+
+   const sdk = new NodeSDK({
+     resource: new Resource({
+       [ATTR_SERVICE_NAME]: serviceName,
+       'cloud.provider': 'aws',
+       'cloud.platform': 'aws_bedrock_agentcore',
+       'cloud.region': process.env.AWS_REGION || 'us-east-1',
+     }),
+     traceExporter: new OTLPTraceExporter({
+       url: `${otlpEndpoint}/v1/traces`,
+     }),
+     instrumentations: [
+       getNodeAutoInstrumentations({
+         '@opentelemetry/instrumentation-http': { enabled: true },
+         '@opentelemetry/instrumentation-express': { enabled: true },
+         '@opentelemetry/instrumentation-aws-sdk': { enabled: true },
+       }),
+     ],
+   });
+
+   sdk.start();
+   console.log('OpenTelemetry SDK initialized');
+   ```
+
+3. **Load tracing module BEFORE your application** in `Dockerfile`:
+   ```dockerfile
+   # Update CMD to load OpenTelemetry before the application
+   CMD ["node", "--require", "./dist/tracing.js", "dist/server.js"]
+   ```
+
+**Why this is required:**
+
+For AgentCore Runtime hosted agents (like this example), AWS requires you to **add the ADOT SDK to your agent code**. The infrastructure (Log Delivery) provides the *destination* for traces, but your code must *generate* the traces.
+
+**The flow:**
+1. Your container code instruments operations using OpenTelemetry SDK
+2. OTLP exporter sends traces to AgentCore Runtime's collector
+3. Log Delivery configuration routes traces to X-Ray
+4. GenAI Observability dashboard displays the data
+
+**Without Step 1d:** Your infrastructure is ready to receive traces, but your code never generates any. Dashboard shows 0/0 agents forever.
+
+**This example includes all ADOT setup automatically!** See:
+- `container/tracing.ts` - OpenTelemetry SDK initialization
+- `container/package.json` - All required OpenTelemetry packages
+- `container/Dockerfile` - CMD configured to load tracing before app
+
+**Reference**: 
+- AWS AgentCore Observability Docs: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html
+- Based on AWS example: https://github.com/awslabs/amazon-bedrock-agentcore-samples
 
 ### 2. Configure Firebase
 
@@ -308,6 +387,43 @@ extract the history section, and create a timeline chart using matplotlib
 
 **⏰ Note: After deployment and first invocations, allow 5-15 minutes for traces to appear in X-Ray and the GenAI Observability dashboard.** CloudWatch Logs appear immediately, but X-Ray trace propagation has a delay.
 
+### Success Criteria - What You Should See
+
+After deploying and invoking your runtime, you should see:
+
+**✅ GenAI Observability Dashboard (CloudWatch > GenAI Observability > Agents)**
+```
+Agents (1)                                    ← Should show "1", not "0"
+┌────────────────────────────────────────────────────────────────┐
+│ Name                  Environment        Sessions  Traces  Errors │
+│ langgraph_agent...    bedrock-agentcore     3        3       0   │
+│   DEFAULT             bedrock-agentcore     3        3       0   │
+└────────────────────────────────────────────────────────────────┘
+
+Overview
+Agents/Endpoints: 1/1        ← This confirms observability is working!
+Sessions: 3
+Traces: 3
+Error rate: 0%
+Throttle rate: 0%
+```
+
+**✅ CloudWatch Logs** (appear immediately)
+```bash
+aws logs tail "/aws/vendedlogs/bedrock-agentcore/YOUR_RUNTIME_ID" --since 1h
+# Should show JSON logs with trace_id, span_id, session_id
+```
+
+**✅ X-Ray Traces** (appear after 5-15 minutes)
+- AWS Console > CloudWatch > X-Ray > Traces
+- Shows distributed traces with AgentCore Runtime spans
+- Service map shows connections to Bedrock models
+
+**❌ If dashboard shows "Agents (0)" after 20+ minutes:**
+- Missing ADOT SDK instrumentation in container code (see Setup Step 1d)
+- Missing Log Delivery configuration (see Setup Step 1c)
+- See Troubleshooting section below
+
 ### Viewing Traces
 
 1. **AWS Console > CloudWatch > Application Signals**
@@ -319,13 +435,14 @@ extract the history section, and create a timeline chart using matplotlib
    - Tool execution timing
 
 **Verification Steps After Deployment:**
-1. Invoke your AgentCore Runtime a few times
+1. Invoke your AgentCore Runtime a few times via web UI or WebSocket
 2. Check CloudWatch Logs immediately (should see logs right away):
    ```bash
    aws logs tail "/aws/vendedlogs/bedrock-agentcore/langgraph_agent_runtime-TEUJecAs2z" --since 1h --region us-east-1
    ```
 3. Wait 5-15 minutes for X-Ray traces to propagate
-4. Check GenAI Observability dashboard - should show your runtime (not 0/0 agents)
+4. Check GenAI Observability dashboard - **should show 1/1 agents** (not 0/0)
+5. Click on your agent name to see detailed metrics and traces
 
 ### X-Ray Service Map
 
@@ -415,21 +532,27 @@ const agent = new ToolLoopAgent({
 
 **Issue**: CloudWatch GenAI Observability dashboard shows 0/0 agents even though Application Signals and Transaction Search are enabled and you've invoked the runtime multiple times.
 
-**Root Cause**: Missing **CloudWatch Log Delivery** configuration. This is the most common issue and the least documented!
+**Root Cause**: Two-part problem - BOTH must be fixed:
+
+1. ❌ **Missing CloudWatch Log Delivery configuration** (infrastructure)
+2. ❌ **Missing ADOT SDK instrumentation** (container code)
 
 **What's Happening**:
 1. ✅ Application Signals enabled (account-level setting)
 2. ✅ Transaction Search enabled (account-level setting)
-3. ❌ **Log Delivery NOT configured** (runtime-specific resources)
+3. ❌ **Log Delivery NOT configured** (runtime-specific infrastructure)
+4. ❌ **ADOT SDK NOT added to container code** (critical missing piece!)
 
 **Why This Is Confusing**:
 - AWS Console doesn't show any errors
 - Runtime works perfectly (returns responses)
 - Account-level settings appear correct
-- No indication that Log Delivery is missing
+- CloudWatch Logs show activity with trace_id fields
+- No indication that ADOT instrumentation is missing
+- Documentation doesn't make the code requirement clear
 - You'll just wait hours seeing nothing in the dashboard
 
-**Solution**: The CDK stack in this example includes the complete Log Delivery configuration (lines 201-297 in `lib/agentcore-runtime-stack.ts`). It creates:
+**Solution Part 1 - Infrastructure**: The CDK stack in this example includes the complete Log Delivery configuration (lines 201-297 in `lib/agentcore-runtime-stack.ts`). It creates:
 
 ```typescript
 // 1. Log Group for vended logs
@@ -468,11 +591,56 @@ new CfnResource(this, 'LogsDelivery', {
 // Same pattern for TRACES → X-Ray
 ```
 
-**After deploying with Log Delivery configured**:
-- GenAI Observability dashboard shows your agent
-- X-Ray traces appear in console
-- CloudWatch Logs show APPLICATION_LOGS
-- Everything works as expected
+**Solution Part 2 - Container Code Instrumentation** (THE CRITICAL PART!):
+
+Even with Log Delivery configured, you MUST add the OpenTelemetry SDK to your container code. This example includes it automatically:
+
+```typescript
+// container/tracing.ts
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'agentcore-runtime',
+    'cloud.provider': 'aws',
+    'cloud.platform': 'aws_bedrock_agentcore',
+  }),
+  traceExporter: new OTLPTraceExporter({
+    url: `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`,
+  }),
+  instrumentations: [getNodeAutoInstrumentations({
+    '@opentelemetry/instrumentation-http': { enabled: true },
+    '@opentelemetry/instrumentation-express': { enabled: true },
+    '@opentelemetry/instrumentation-aws-sdk': { enabled: true },
+  })],
+});
+
+sdk.start();
+```
+
+```dockerfile
+# container/Dockerfile
+# Load OpenTelemetry BEFORE the application starts
+CMD ["node", "--require", "./dist/tracing.js", "dist/server.js"]
+```
+
+**The Complete Flow**:
+1. Your container code instruments operations using OpenTelemetry SDK
+2. OTLP exporter sends traces to AgentCore Runtime's collector
+3. Log Delivery configuration routes traces to X-Ray
+4. GenAI Observability dashboard displays the data
+
+**Without BOTH parts**:
+- Infrastructure only: Ready to receive traces, but code never generates any → 0/0 agents
+- Code only: Generates traces, but nowhere to send them → 0/0 agents
+
+**After deploying with BOTH configured**:
+- ✅ GenAI Observability dashboard shows your agent (1/1 instead of 0/0)
+- ✅ X-Ray traces appear in console with full distributed tracing
+- ✅ CloudWatch Logs show APPLICATION_LOGS with trace correlation
+- ✅ Everything works as expected
 
 **Reference**: This configuration pattern comes from https://github.com/awslabs/amazon-bedrock-agentcore-samples
 
