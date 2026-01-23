@@ -1,7 +1,43 @@
 # Active Context
 
 ## Current Focus
-**AgentCore Runtime integration complete** - 5 working Bedrock integration patterns operational across multiple deployment models
+**AgentCore Memory Integration - DEPLOYING** - First deployment with conversation persistence via AgentCore Memory service
+
+## Recent Session (Jan 20, 2026 - Session 2)
+
+### AgentCore Memory Integration ✅ COMPLETE & DEPLOYING
+- ✅ Using `langgraph-callback-checkpointer@1.0.1` (user's custom package)
+- ✅ Added `@aws-sdk/client-bedrock-agentcore` dependency for AgentCore Memory APIs
+- ✅ Implemented `CallbackSaver` with AgentCore Memory backend
+- ✅ Created `AWS::BedrockAgentCore::Memory` CloudFormation resource
+- ✅ Added AgentCore Memory IAM permissions
+- ✅ Environment variable `AGENTCORE_MEMORY_ID` configured
+- ✅ TypeScript compilation successful
+- 🚀 **DEPLOYING NOW** - Building container image with memory integration
+- Stack: `RealAgentCoreRuntimeStack`
+- Changes: Added AgentCoreMemory resource, AGENTCORE_MEMORY_ID env var, memory dependency
+
+### Deployment Status
+```
+Building ARM64 container with:
+- langgraph-callback-checkpointer integration
+- AgentCore Memory API calls
+- Session/actor ID support
+```
+
+### Architecture: CallbackSaver + AgentCore Memory
+- **CallbackSaver**: User's package that allows any storage backend via callbacks
+- **AgentCore Memory**: AWS managed service for conversation persistence
+- **Storage Pattern**: Events stored in AgentCore Memory with types (checkpoint, writes)
+- **Query Pattern**: RetrieveMemories uses query strings to filter events
+- **Benefits**: Managed service with built-in features (S3 backend under the hood)
+
+### Next Steps
+1. 🎯 **Test AgentCore Memory integration** - Deploy and verify checkpoints persist
+2. 🎯 **Commit changes** - Git commit all AgentCore Memory integration work
+3. 🎯 **Claude Haiku 4.5 Integration** - Enable model selection in web UI
+4. 🎯 **Add Haiku support** - Update all Lambda handlers for model ID selection
+5. 🎯 **Update pricing** - Haiku cost calculations (cheaper than Sonnet)
 
 ## Recent Accomplishments (Jan 18, 2026)
 

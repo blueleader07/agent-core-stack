@@ -1,0 +1,10 @@
+{
+  "RealAgentCoreRuntimeStack": {
+    "AgentCoreRuntimeId": "langgraph_agent_runtime-TEUJecAs2z",
+    "AgentCoreRuntimeStatus": "READY",
+    "AgentCoreRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:991551400024:runtime/langgraph_agent_runtime-TEUJecAs2z",
+    "AgentCoreRoleArn": "arn:aws:iam::991551400024:role/RealAgentCoreRuntimeStack-AgentCoreRuntimeRole32A8C-wvxi6SGA24PJ",
+    "AgentCoreMemoryId": "langgraph_agent_memory-QaYdO09lxb",
+    "ECRRepositoryUri": "991551400024.dkr.ecr.us-east-1.amazonaws.com/cdk-hnb659fds-container-assets-991551400024-us-east-1:8c4165875ab6872444de139c1a5788d72569853881cfe21797dbb4da92ff59f2"
+  }
+}
