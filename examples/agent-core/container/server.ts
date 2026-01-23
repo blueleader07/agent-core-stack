@@ -19,10 +19,10 @@ import { createServer } from 'http';
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
-import { ToolNode, toolsCondition } from '@langchain/langgraph/prebuilt';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 import axios from 'axios';
+import { AgentCoreMemorySaver } from './agentcore-checkpointer';
 
 // =============================================================================
 // Configuration
@@ -32,8 +32,9 @@ const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = '0.0.0.0';
 const MODEL_ID = process.env.MODEL_ID || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+const MEMORY_ID = process.env.AGENTCORE_MEMORY_ID || '';
 
-console.log('AgentCore Runtime starting...', { PORT, HOST, MODEL_ID, AWS_REGION });
+console.log('AgentCore Runtime starting...', { PORT, HOST, MODEL_ID, AWS_REGION, MEMORY_ID });
 
 // =============================================================================
 // LangGraph Agent Setup
@@ -111,26 +112,76 @@ async function chatbot(state: typeof GraphState.State): Promise<Partial<typeof G
   return { messages: [response] };
 }
 
-// Create the tool node using LangGraph prebuilt
-const toolNode = new ToolNode(tools);
+// Define the tools node - executes tool calls
+async function executeTools(state: typeof GraphState.State): Promise<Partial<typeof GraphState.State>> {
+  const lastMessage = state.messages[state.messages.length - 1];
+  
+  if (!lastMessage || !(lastMessage instanceof AIMessage) || !lastMessage.tool_calls) {
+    return { messages: [] };
+  }
 
-// Build the LangGraph state machine
+  const toolResults: ToolMessage[] = [];
+  
+  for (const toolCall of lastMessage.tool_calls) {
+    const tool = tools.find(t => t.name === toolCall.name);
+    if (!tool) {
+      toolResults.push(new ToolMessage({
+        tool_call_id: toolCall.id || '',
+        content: `Tool ${toolCall.name} not found`,
+      }));
+      continue;
+    }
+
+    try {
+      const result = await tool.func(toolCall.args as any);
+      toolResults.push(new ToolMessage({
+        tool_call_id: toolCall.id || '',
+        content: String(result),
+      }));
+    } catch (error) {
+      toolResults.push(new ToolMessage({
+        tool_call_id: toolCall.id || '',
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      }));
+    }
+  }
+
+  return { messages: toolResults };
+}
+
+// Routing function - determines if we need to call tools or finish
+function shouldContinue(state: typeof GraphState.State): string {
+  const lastMessage = state.messages[state.messages.length - 1];
+  
+  if (lastMessage instanceof AIMessage && lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+    return 'tools';
+  }
+  
+  return END;
+}
+
+// Build the LangGraph state machine with checkpointer
 function buildGraph() {
+  // TODO: Temporarily disabled memory checkpointer for debugging
+  // Initialize AgentCore Memory checkpointer if MEMORY_ID is provided
+  // const checkpointer = MEMORY_ID 
+  //   ? new AgentCoreMemorySaver({ memoryId: MEMORY_ID, region: AWS_REGION })
+  //   : undefined;
+  const checkpointer = undefined;
+
   const graph = new StateGraph(GraphState)
     .addNode('chatbot', chatbot)
-    .addNode('tools', toolNode)
+    .addNode('tools', executeTools)
     .addEdge(START, 'chatbot')
-    .addConditionalEdges('chatbot', toolsCondition, {
-      tools: 'tools',
-      [END]: END,
-    })
+    .addConditionalEdges('chatbot', shouldContinue)
     .addEdge('tools', 'chatbot');
 
-  return graph.compile();
+  return graph.compile({ checkpointer });
 }
 
 // Create the compiled graph
 const graph = buildGraph();
+console.log('[LangGraph] Graph compiled', { memoryDisabledForDebugging: true });
 
 // =============================================================================
 // Express HTTP Server
@@ -178,23 +229,38 @@ app.get('/ping', (req: Request, res: Response) => {
  */
 app.post('/invocations', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { prompt, stream = true } = req.body;
+  const { prompt, message, stream = true, sessionId, userId } = req.body;
 
-  if (!prompt) {
+  // Accept either 'prompt' or 'message' field
+  const userMessage = prompt || message;
+
+  if (!userMessage) {
     return res.status(400).json({
-      error: 'Missing required field: prompt',
+      error: 'Missing required field: prompt or message',
       status: 'error',
     });
   }
 
-  console.log('[/invocations] Processing:', prompt.substring(0, 100));
+  console.log('[/invocations] Processing:', userMessage.substring(0, 100));
   isBusy = true;
   lastUpdateTime = Date.now();
 
   try {
     const initialState = {
-      messages: [new HumanMessage(prompt)],
+      messages: [new HumanMessage(userMessage)],
     };
+
+    // Build config for checkpointer if session info provided
+    const config = (MEMORY_ID && sessionId && userId) ? {
+      configurable: {
+        thread_id: sessionId,
+        actor_id: userId
+      }
+    } : undefined;
+
+    if (config) {
+      console.log('[/invocations] Using checkpointer with session:', sessionId);
+    }
 
     if (stream) {
       // SSE Streaming Response
@@ -207,6 +273,7 @@ app.post('/invocations', async (req: Request, res: Response) => {
 
       const graphStream = await graph.stream(initialState, {
         streamMode: 'updates',
+        ...config
       });
 
       for await (const update of graphStream) {
@@ -276,6 +343,7 @@ app.post('/invocations', async (req: Request, res: Response) => {
 
       const graphStream = await graph.stream(initialState, {
         streamMode: 'updates',
+        ...config
       });
 
       // Track token usage across all messages

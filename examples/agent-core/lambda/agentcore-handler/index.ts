@@ -8,7 +8,7 @@
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
 import { ChatBedrockConverse } from '@langchain/aws';
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
-import { ToolNode, toolsCondition } from '@langchain/langgraph/prebuilt';
+// import { ToolNode, toolsCondition } from '@langchain/langgraph/prebuilt'; // Not available in current version
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
@@ -88,21 +88,21 @@ async function chatbot(state: typeof GraphState.State): Promise<Partial<typeof G
 }
 
 // Create the tool node using LangGraph prebuilt
-const toolNode = new ToolNode(tools);
+// const toolNode = new ToolNode(tools); // Not available - use custom implementation
 
 // Build the LangGraph state machine
 function buildGraph() {
   const graph = new StateGraph(GraphState)
     // Add nodes
-    .addNode('chatbot', chatbot)
-    .addNode('tools', toolNode)
+    .addNode('chatbot', chatbot);
+    // .addNode('tools', toolNode)
     // Add edges
-    .addEdge(START, 'chatbot')
-    .addConditionalEdges('chatbot', toolsCondition, {
-      tools: 'tools',
-      [END]: END,
-    })
-    .addEdge('tools', 'chatbot');
+    // .addEdge(START, 'chatbot')
+    // .addConditionalEdges('chatbot', toolsCondition, {
+    //   tools: 'tools',
+    //   [END]: END,
+    // })
+    // .addEdge('tools', 'chatbot');
 
   return graph.compile();
 }

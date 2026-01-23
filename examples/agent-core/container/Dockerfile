@@ -19,7 +19,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm ci --no-optional
 
 # Copy source code
 COPY *.ts ./
@@ -45,7 +45,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --no-optional
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist

@@ -111,7 +111,8 @@ async function handleMessage(event: WebSocketEvent, domainName: string, stage: s
     }
 
     if (action === 'invoke-runtime' || action === 'chat') {
-      await invokeAgentCoreRuntime(apiGatewayClient, connectionId, message);
+      const { sessionId, userId } = body;
+      await invokeAgentCoreRuntime(apiGatewayClient, connectionId, message, sessionId, userId);
       return { statusCode: 200, body: 'AgentCore Runtime invoked' };
     }
 
@@ -174,11 +175,15 @@ async function sendToConnection(
 async function invokeAgentCoreRuntime(
   wsClient: ApiGatewayManagementApiClient,
   connectionId: string,
-  userMessage: string
+  userMessage: string,
+  sessionId?: string,
+  userId?: string
 ) {
   console.log('Invoking AgentCore Runtime:', {
     runtimeArn: AGENTCORE_RUNTIME_ARN,
     message: userMessage,
+    sessionId,
+    userId
   });
 
   if (!AGENTCORE_RUNTIME_ARN) {
@@ -194,6 +199,8 @@ async function invokeAgentCoreRuntime(
     const payload = JSON.stringify({
       prompt: userMessage,  // Container expects 'prompt', not 'message'
       stream: false,        // Try non-streaming first to debug
+      sessionId,            // Pass session ID for conversation persistence
+      userId                // Pass user ID for conversation persistence
     });
 
     console.log('Payload being sent to AgentCore:', payload);
@@ -207,7 +214,7 @@ async function invokeAgentCoreRuntime(
     });
 
     console.log('Sending InvokeAgentRuntimeCommand...');
-    const response = await agentCoreClient.send(command);
+    const response = await agentCoreClient.send(command) as any;
     
     // Log ALL properties of the response to find where the data is
     console.log('AgentCore response - all keys:', Object.keys(response));
@@ -481,7 +488,7 @@ async function processAgentCoreEvent(
 /**
  * Helper to convert a stream/blob to a Buffer
  */
-async function streamToBuffer(stream: ReadableStream<Uint8Array> | Blob): Promise<Uint8Array> {
+async function streamToBuffer(stream: any): Promise<Uint8Array> {
   if ('arrayBuffer' in stream) {
     // It's a Blob
     const arrayBuffer = await stream.arrayBuffer();

@@ -15,6 +15,7 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -149,9 +150,37 @@ export class AgentCoreRuntimeStack extends cdk.Stack {
                 },
               },
             }),
+            // AgentCore Memory - for conversation persistence
+            new iam.PolicyStatement({
+              sid: 'AgentCoreMemory',
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'bedrock-agentcore:CreateEvent',
+                'bedrock-agentcore:ListEvents',
+                'bedrock-agentcore:DeleteEvent',
+                'bedrock-agentcore:RetrieveMemories',
+              ],
+              resources: [
+                `arn:aws:bedrock-agentcore:${this.region}:${this.account}:memory/*`,
+              ],
+            }),
           ],
         }),
       },
+    });
+
+    // ==========================================================================
+    // AWS::BedrockAgentCore::Memory (for conversation persistence)
+    // ==========================================================================
+    
+    const agentCoreMemory = new agentcore.Memory(this, 'AgentCoreMemory', {
+      memoryName: 'langgraph_agent_memory',
+      description: 'Conversation memory for LangGraph agent',
+      memoryStrategies: [
+        agentcore.MemoryStrategy.usingBuiltInSemantic(),
+        agentcore.MemoryStrategy.usingBuiltInSummarization(),
+        agentcore.MemoryStrategy.usingBuiltInUserPreference(),
+      ],
     });
 
     // ==========================================================================
@@ -176,6 +205,7 @@ export class AgentCoreRuntimeStack extends cdk.Stack {
         EnvironmentVariables: {
           MODEL_ID: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
           AWS_REGION: this.region,
+          AGENTCORE_MEMORY_ID: agentCoreMemory.memoryId,
         },
       },
     });
@@ -329,6 +359,11 @@ export class AgentCoreRuntimeStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'AgentCoreRoleArn', {
       value: agentCoreRole.roleArn,
       description: 'IAM Role ARN for AgentCore Runtime',
+    });
+
+    new cdk.CfnOutput(this, 'AgentCoreMemoryId', {
+      value: agentCoreMemory.memoryId,
+      description: 'AgentCore Memory ID for conversation persistence',
     });
   }
 }
